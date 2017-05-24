@@ -31,7 +31,7 @@ def ReadInls(inlist,value):
 # Meaning if our x_1 = [0.3,0.9] and x_2 = [0.01,0.1] then
 # ytile = final mass from MESA run with x_1 = 0.6 and x_2 = 0.05
 
-midrun = '/data/mhoffman/NUQ/midpoint' # This should be a path the the ytilde folder
+midrun = '/data/mhoffman/NUQ/new_midpoints/tile4' # This should be a path the the ytilde folder
 os.chdir(midrun)
 s = ms.history_data()
 mass = s.get('star_mass')
@@ -43,12 +43,13 @@ ytilde = mass[ (len(mass)-1) ] # obtain the last mass
 #path = raw_input('Please provide path of top folder using: ')
 #os.chdir(path)
 
-paths = ['/data/mhoffman/NUQ/1M_CD_Grid_pt1/','/data/mhoffman/NUQ/1M_CD_Grid_pt2']
+paths = ['/data/mhoffman/NUQ/cdtiles/tile4']
 
 kvals = []
 masses = []
 reims = []
 block = []
+nums = []
 
 for i in paths:
     os.chdir(i)
@@ -70,7 +71,16 @@ for i in paths:
 
             os.chdir(i+'/'+file)
             currd = os.getcwd()
+            print(currd)
 
+            for file in os.listdir(currd):
+                logt = re.match('\Arun\_out\_([0-9]*)\.log\Z',file)
+                if logt:
+                
+                    cn = logt.groups()[0]
+                    print(cn)
+
+            nums.append(cn)
             s = ms.history_data()
             lum = s.get('log_L')
             mass = s.get('star_mass')
@@ -87,7 +97,9 @@ for i in paths:
                 block.append(bv)
             else:
                 print('In '+currd+' luminosity too low, excluding point!')
-
+                #masses.append(-1.)
+                #reims.append(-1.)
+                #block.append(-1.)
                 os.chdir(i)
 
         else:
@@ -145,7 +157,9 @@ print('The result for delta is: '+str(dmid))
 #
 #file = open('results.out', 'w')
 
-
+#np.savetxt('masses.out',masses,delimiter=',')
+#np.savetxt('reims.out',reims,delimiter=',')
+#np.savetxt('block.out',block,delimiter=',')
 
         
             
