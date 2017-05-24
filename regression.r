@@ -4,7 +4,7 @@
 # then type
 # $ source(regression.r)
 
-star = read.csv(file="output.csv")
+star = read.csv(file="output2.csv")
 
 x = star$Blocker_scaling_factor
 y = star$Reimers_scaling_factor
