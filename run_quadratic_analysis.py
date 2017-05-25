@@ -5,9 +5,9 @@ from QuadraticAnalysisToolkit import Grid, QuadraticAnalysis, EnsembleAnalysis
 parser = argparse.ArgumentParser()
 parser.add_argument('csvfile', type=str,
                     help='Name of the input csv file containing (x, y, value) data series.')
-parser.add_argument('-d', '--csvdelimiter', type=str, default=',',
+parser.add_argument('-delim', '--csvdelimiter', type=str, default=',',
                     help='Delimiter for csv file (default is comma).')
-parser.add_argument('-h', '--skipheader', type=int, default=1,
+parser.add_argument('-skiph', '--skipheader', type=int, default=1,
                     help='Number of header lines in csv to skip (default is 1).')
 parser.add_argument('-lo', '--lo', type=float, nargs='+', required=True,
                     help='Lower bounds of rectangular input uncertainty region.')
@@ -40,7 +40,7 @@ if __name__=='__main__':
         sys.exit('ERROR: Boundary lists should be the same length as the csv point dimensionality.')
 
     # Check to make sure the grid is large enough for quadratic analysis
-    npoints_required = ndim(ndim-1)/2 + 2*ndim + 1
+    npoints_required = ndim*(ndim-1)/2 + 2*ndim + 1
     if len(g.points) < npoints_required:
         sys.exit('ERROR: Cannot perform quadratic analysis in {} dimensions with fewer than {} points.'.format(ndim, npoints_required))
     

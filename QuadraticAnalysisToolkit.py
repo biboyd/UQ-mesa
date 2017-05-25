@@ -1,7 +1,7 @@
 import sys
 import operator
+import itertools
 import numpy as np
-from itertools import combination
 from math import factorial, floor
 from scipy.optimize import curve_fit, minimize, brentq
 
@@ -24,7 +24,7 @@ class Grid(object):
             self.getCoords()
             self.getValues()
 
-    def initFromCSV(fname, delimiter=',', skip_header=1):
+    def initFromCSV(self, fname, delimiter=',', skip_header=1):
         # Given the name (fname) of a csv file
         # containing a series of entries x1, x2, ..., xn, v
         # with skip_header lines of header,
@@ -105,7 +105,7 @@ class QuadraticFit(object):
         # contains the index k into coefs_cross
         # storing the coefficient c[k] for
         # the cross term c[k]*z[i]*z[j]
-        self.cross_indices = np.zeros((self.dm, self.dm))
+        self.cross_indices = np.zeros((self.dm, self.dm), dtype=int)
         iupper = 0
         ilower = 0
         for i in range(self.dm):
@@ -130,29 +130,38 @@ class QuadraticFit(object):
                     if j > i and self.cross_indices[i,j]==k:
                         return i,j
 
-    def get_coefs_const(self, coefficients=self.coefficients):
+    def get_coefs_const(self, coefficients=[]):
         # Given a vector of coefficients,
         # return the intercept coefficient
+        if len(coefficients)==0:
+            coefficients = self.coefficients
         return coefficients[0]
 
-    def get_coefs_first(self, coefficients=self.coefficients):
+    def get_coefs_first(self, coefficients=[]):
         # Given a vector of coefficients,
         # return the vector of coefficients of
         # first-order variables: e.g. ci*xi
+        if len(coefficients)==0:            
+            coefficients = self.coefficients
         return coefficients[1:self.dm+1]
 
-    def get_coefs_cross(self, coefficients=self.coefficients):
+    def get_coefs_cross(self, coefficients=[]):
         # Given a vector of coefficients,
         # return the vector of coefficients of
         # cross-variable products: e.g. cij*xi*xj
-        ncross = floor(factorial(self.dm)/2)
-        return coefficients[self.dm+1:self.dm+ncross+2]
+        if len(coefficients)==0:                        
+            coefficients = self.coefficients
+        ncross = int(floor(factorial(self.dm)/2))
+        return coefficients[self.dm+1:self.dm+1+ncross]
 
-    def get_coefs_second(self, coefficients=self.coefficients):
+    def get_coefs_second(self, coefficients=[]):
         # Given a vector of coefficients,
         # return the vector of coefficients of
         # second-order variables: e.g. ci*xi**2
-        return coefficients[self.dm+ncross+2:]
+        if len(coefficients)==0:                        
+            coefficients = self.coefficients
+        ncross = int(floor(factorial(self.dm)/2))
+        return coefficients[self.dm+1+ncross:]
 
     def quadratic_nd(self, z, *coefs):
         f = self.get_coefs_const(coefs)
@@ -172,7 +181,8 @@ class QuadraticFit(object):
 
     def do_quad_fit(self):
         self.coefficients, self.covariance = curve_fit(self.quadratic_nd,
-                                                       self.grid.coords, self.grid.values)
+                                                       self.grid.coords, self.grid.values,
+                                                       p0=np.ones(self.ncoefs))
         self.std_error = np.sqrt(np.diag(self.covariance))
 
 class EllipticOptimize(object):
@@ -196,8 +206,14 @@ class EllipticOptimize(object):
 
         self.set_amat()
         self.set_zmat()
-        self.inner_min, self.inner_max, isuccess = self.get_extrema(self.zmat_inner)
-        self.outer_min, self.outer_max, osuccess = self.get_extrema(self.zmat_outer)
+        if self.verbose:
+            print('------------ INNER ELLIPSE OPTIMIZATION')
+        self.inner_min, self.inner_max, isuccess = self.get_extrema(self.amat_inner,
+                                                                    self.zmat_inner)
+        if self.verbose:
+            print('------------ OUTER ELLIPSE OPTIMIZATION')
+        self.outer_min, self.outer_max, osuccess = self.get_extrema(self.amat_outer,
+                                                                    self.zmat_outer)
         self.success = isuccess and osuccess
 
     def writelog(self, file_handle):
@@ -205,7 +221,7 @@ class EllipticOptimize(object):
         file_handle.write('# ELLIPTIC OPTIMIZATION LOG\n')
         file_handle.write('# INNER MINIMUM, INNER MAXIMUM:\n')
         file_handle.write('{}, {}\n'.format(self.inner_min, self.inner_max))
-        file_handle.write('# OUTER MINIMUM, INNER MAXIMUM:\n')
+        file_handle.write('# OUTER MINIMUM, OUTER MAXIMUM:\n')
         file_handle.write('{}, {}\n'.format(self.outer_min, self.outer_max))
         
     def quad_transform_nd(self, f0, hp, mu, tp):
@@ -218,8 +234,11 @@ class EllipticOptimize(object):
         # Set the A matrix entries for the inner (inscribed)
         # and outer (circumscribed) ellipses.
         # Note the circumscribed ellipse accounts for dimensionality.
-        self.amat_inner = np.diag(np.diag([4.0/(dri**2) for dri in self.dr]))
-        self.amat_outer = np.diag(np.diag([(4.0/self.dm)/(dri**2) for dri in self.dr]))
+        self.amat_inner = np.zeros((self.dm, self.dm))
+        self.amat_outer = np.zeros((self.dm, self.dm))        
+        for i, dri in enumerate(self.dr):
+            self.amat_inner[i,i] = 4.0/(dri**2)
+            self.amat_outer[i,i] = (4.0/self.dm)/(dri**2)
 
     def set_zmat(self):
         self.zmat_inner = np.linalg.inv(self.amat_inner)
@@ -263,7 +282,7 @@ class EllipticOptimize(object):
             tp[k] = -hp[k] / (2.0 * (mu[k] + x))
         return tp
     
-    def get_extrema(self, zmat):
+    def get_extrema(self, amat, zmat):
         w, v = np.linalg.eig(zmat)
 
         # Construct f1 (f_i)
@@ -272,7 +291,7 @@ class EllipticOptimize(object):
         ccross  = self.quadfit.get_coefs_cross()
 
         # Construct f2 (f_ij)
-        f2 = np.array((self.dm, self.dm))
+        f2 = np.zeros((self.dm, self.dm))
         for i in range(self.dm):
             for j in range(self.dm):
                 if i==j:
@@ -379,7 +398,7 @@ class EllipticOptimize(object):
                 print('Extremum not found in the interior of the domain.')
 
             print("objective function:")
-            print(self.quad_transform_nd(f0, hp, mu, tp))
+            print(self.quad_transform_nd(fp0, hp, mu, tp))
 
         # Now find extrema of the objective function on the ellipse boundary
         
@@ -430,14 +449,49 @@ class EllipticOptimize(object):
                 # Warn that brentq did not converge
                 print('WARNING: brentq did not converge on chi between {} and {} with {} max iterations! (Ignoring interval)'.format(ilo, ihi, maxiter))
 
+        if self.verbose:
+            print('Found roots of chi(x): {}'.format(lroots))
+                
         # Find the maximum and minimum of f(t) given the roots of chi
-        froots = np.zeros(len(lroots))
-        tplist = [tp] # Check f at the extrema found within the ellipse
+        fextrema = np.zeros(len(lroots)+1)
+        fextrema[0] = self.quad_transform_nd(fp0, hp, mu, tp)
+        tplist = [tp] # Check f at the extremum found within the ellipse
         for i, xr in enumerate(lroots):
             tpi = self.get_tp_from_lambda(xr, hp, mu)
+            if self.verbose:
+                print('sum tpi: {}'.format(np.sum(tpi**2)))
             tplist.append(tpi)
-            fextrema[i] = self.quad_transform_nd(f0, hp, mu, tp)
+            fextrema[i+1] = self.quad_transform_nd(fp0, hp, mu, tpi)
 
+        if self.verbose:
+            print('Values of f at roots of chi(x): {}'.format(fextrema[1:]))
+
+            # 2D sanity checking
+            npts = 1000
+
+            x_arr = np.linspace(self.lo[0], self.hi[1], npts)
+            y_arr = np.linspace(self.lo[0], self.hi[1], npts)
+            x_arr, y_arr = np.meshgrid(x_arr, y_arr)
+            z_arr = np.copy(x_arr)
+
+            for i in range(npts):
+                for j in range(npts):
+                    x_arr[i,j] = x_arr[i,j]
+
+            for i in range(npts):
+                for j in range(npts):
+                    y_arr[i,j] = y_arr[i,j]
+
+            for i in range(npts):
+                for j in range(npts):
+                    z_arr[i,j] = self.quadfit.quadratic_nd([x_arr[i,j], y_arr[i,j]],
+                                                           *self.quadfit.coefficients)
+
+            mask = np.where(amat[0,0]*(x_arr-self.center[0])**2 + amat[1,1]*(y_arr-self.center[1])**2 <= 1.0)
+
+            print("Sampled Minimum in elliptical region is: ", np.min(z_arr[mask]))
+            print("Sampled Maximum in elliptical region is: ", np.max(z_arr[mask]))
+            
         if len(fextrema) < 2:
             if self.verbose:
                 print('ERROR: insufficient function extrema found!')
@@ -477,28 +531,6 @@ class EllipticOptimize(object):
 
         return fmin, fmax, success
 
-#TODO: put this in sanity-checking routine.
-# # Get the bounds of the final objective function; this should be
-# # identical to the bounds of the original objective function if
-# # we did everything correctly.
-
-# for i in range(plot_npts):
-#     for j in range(plot_npts):
-#         x_arr[i,j] = (x_arr[i,j] - xc) * lambda_k[0]
-
-# for i in range(plot_npts):
-#     for j in range(plot_npts):
-#         y_arr[i,j] = (y_arr[i,j] - yc) * lambda_k[1]
-
-# for i in range(plot_npts):
-#     for j in range(plot_npts):
-#         z_arr[i,j] = obj_func_final(f_0, h_p, mu, [x_arr[i,j], y_arr[i,j]])
-
-# mask = np.where(x_arr**2 + y_arr**2 <= 1.0)
-
-# print "Minimum in elliptical region is: ", np.min(z_arr[mask])
-# print "Maximum in elliptical region is: ", np.max(z_arr[mask])
-
 class QuadraticAnalysis(object):    
     def __init__(self, grid, lo, hi, ofile=None, verbose=False):
         self.grid = grid
@@ -514,7 +546,8 @@ class QuadraticAnalysis(object):
     def analyze(self):
         # Do the quadratic fit and elliptic optimization
         self.qfit = QuadraticFit(self.grid)
-        self.eopt = EllipticOptimize(qfit, self.lo, self.hi, verbose=self.verbose)
+        self.eopt = EllipticOptimize(self.qfit, self.lo, self.hi,
+                                     verbose=self.verbose)
 
     def write_results(self):
         if self.outputfile:
@@ -553,7 +586,7 @@ class EnsembleAnalysis(object):
         
     def analyze(self):
         # Do sampling of the points
-        for i, samplepts in enumerate(combination(self.grid.points, self.nensemble)):
+        for i, samplepts in enumerate(itertools.combination(self.grid.points, self.nensemble)):
             g = Grid(samplepts)
             qa = QuadraticAnalysis(g, self.lo, self.hi)
             self.success = self.success and qa.eopt.success
