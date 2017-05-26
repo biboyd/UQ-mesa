@@ -3,6 +3,7 @@ import operator
 import itertools
 import numpy as np
 from math import factorial, floor
+import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit, minimize, brentq
 
 class Point(object):
@@ -206,14 +207,53 @@ class EllipticOptimize(object):
 
         self.set_amat()
         self.set_zmat()
+
         if self.verbose:
-            print('------------ INNER ELLIPSE OPTIMIZATION')
+            print('\n------------ INNER ELLIPSE OPTIMIZATION')
         self.inner_min, self.inner_max, isuccess = self.get_extrema(self.amat_inner,
                                                                     self.zmat_inner)
         if self.verbose:
-            print('------------ OUTER ELLIPSE OPTIMIZATION')
+            print('\n------------ INNER ELLIPSE SUMMARY')
+            print('solved inner min = {}'.format(self.inner_min))
+            print('solved inner max = {}'.format(self.inner_max))
+            
+        inner_min, inner_max, isuccess2 = self.get_extrema_slsqp(self.amat_inner)
+        if self.verbose:
+            print('SLSQP inner min = {}'.format(inner_min))
+            print('SLSQP inner max = {}'.format(inner_max))
+            
+        inner_min, inner_max, xmin, xmax, isuccess3 = self.get_extrema_mesh(self.amat_inner)
+        if self.verbose:
+            print('Mesh Sampling inner min = {}'.format(inner_min))
+            print('inner min at x = {}'.format(xmin))            
+            print('Mesh Sampling inner max = {}'.format(inner_max))
+            print('inner max at x = {}'.format(xmax))                        
+            
+        isuccess = isuccess and isuccess2 and isuccess3
+            
+        if self.verbose:
+            print('\n------------ OUTER ELLIPSE OPTIMIZATION')
         self.outer_min, self.outer_max, osuccess = self.get_extrema(self.amat_outer,
                                                                     self.zmat_outer)
+        if self.verbose:
+            print('\n------------ OUTER ELLIPSE SUMMARY')            
+            print('solved outer min = {}'.format(self.outer_min))
+            print('solved outer max = {}'.format(self.outer_max))
+        
+        outer_min, outer_max, osuccess2 = self.get_extrema_slsqp(self.amat_outer)
+        if self.verbose:
+            print('SLSQP outer min = {}'.format(outer_min))
+            print('SLSQP outer max = {}'.format(outer_max))
+            
+        outer_min, outer_max, xmin, xmax, osuccess3 = self.get_extrema_mesh(self.amat_outer)
+        if self.verbose:
+            print('Mesh Sampling outer min = {}'.format(outer_min))
+            print('outer min at x = {}'.format(xmin))
+            print('Mesh Sampling outer max = {}'.format(outer_max))
+            print('outer max at x = {}'.format(xmax))            
+            
+        osuccess = osuccess and osuccess2 and osuccess3
+            
         self.success = isuccess and osuccess
 
     def writelog(self, file_handle):
@@ -224,8 +264,8 @@ class EllipticOptimize(object):
         file_handle.write('# OUTER MINIMUM, OUTER MAXIMUM:\n')
         file_handle.write('{}, {}\n'.format(self.outer_min, self.outer_max))
         
-    def quad_transform_nd(self, f0, hp, mu, tp):
-        f = f0
+    def quad_transform_nd(self, fp0, hp, mu, tp):
+        f = fp0
         for hi, mi, ti in zip(hp, mu, tp):
             f += hi * ti + mi * ti**2
         return f
@@ -248,7 +288,7 @@ class EllipticOptimize(object):
         f = 0.0
         for hp, mup in zip(h,mu):
             f += hp**2 / (4. * (mup + x)**2)
-        f -= 1.
+        f -= 1.0
         return f
 
     def dchidx(self, x, h, mu):
@@ -266,11 +306,13 @@ class EllipticOptimize(object):
         lhi = np.amax(poles)
         clo = 1.0
         chi = 1.0
+        dllo = abs(0.001*llo)
+        dlhi = abs(0.001*lhi)
         while clo > 0:
-            llo = llo - 100.0 * abs(llo)
+            llo = llo - dllo
             clo = self.chi(llo, h, mu)
         while chi > 0:
-            lhi = lhi + 100.0 * abs(lhi)
+            lhi = lhi + dlhi
             chi = self.chi(lhi, h, mu)
         return llo, lhi
 
@@ -281,9 +323,96 @@ class EllipticOptimize(object):
         for k in range(self.dm):
             tp[k] = -hp[k] / (2.0 * (mu[k] + x))
         return tp
+
+    def get_x_from_tp(self, tp, u, lambdas, v):
+        # Returns the vector x from the
+        # transformed vector tp
+        z = np.zeros(self.dm)
+        for m in range(self.dm):
+            for p in range(self.dm):
+                z[m] += tp[p] * u[m,p]
+        y = z/np.sqrt(lambdas)
+        dx = np.zeros(self.dm)
+        for i in range(self.dm):
+            for k in range(self.dm):
+                dx[i] += y[k] * v[i,k]
+        x = self.center + dx
+        return x
+
+    def elliptic_constraint_fun(self, z, amat):
+        # Elliptic constraint function which should be
+        # non-negative if the constraint is satisfied
+        f = 1.0
+        for i in range(self.dm):
+            f -= amat[i,i] * (z[i] - self.center[i])**2
+        return f
+
+    def get_extrema_mesh(self, amat, npts=100):
+        x_arr = [np.linspace(ilo, ihi, npts) for ilo, ihi in zip(self.lo, self.hi)]
+        x_mesh = np.meshgrid(*x_arr)
+        z_arr = np.copy(x_mesh[0])
+        z_arr = self.quadfit.quadratic_nd(x_mesh, *self.quadfit.coefficients)
+
+        x_flat = [xm.flatten() for xm in x_mesh]
+        z_flat = z_arr.flatten()
+
+        fmin = np.amax(z_flat)
+        fmax = np.amin(z_flat)
+        xmin = np.zeros(self.dm)
+        xmax = np.zeros(self.dm)
+        
+        for i, zi in enumerate(z_flat):
+            xvec = np.array([xf[i] for xf in x_flat])
+            if self.elliptic_constraint_fun(xvec, amat) >= 0.0:
+                if zi < fmin:
+                    fmin = zi
+                    xmin = xvec
+                if zi > fmax:
+                    fmax = zi
+                    xmax = xvec
+
+        return fmin, fmax, xmin, xmax, True
+            
+    def get_extrema_slsqp(self, amat):
+        # Get extrema of fit function within the ellipse
+        # defined by amat using scipy nonlinear
+        # optimization with constraints
+        ztol = 1.0e-9
+
+        # Get minimum of quadratic function
+        res = minimize(lambda x: self.quadfit.quadratic_nd(x, *self.quadfit.coefficients),
+                       self.center, method='SLSQP',
+                       constraints={'type': 'ineq',
+                                    'fun' : self.elliptic_constraint_fun,
+                                    'args': [amat]},
+                       tol=ztol)
+        
+        # Check to make sure the minimum satisfies the elliptic constraint
+        if res.success and self.elliptic_constraint_fun(res.x, amat) >= 0.0:
+            # Construct fmin
+            fmin = self.quadfit.quadratic_nd(res.x, *self.quadfit.coefficients)
+        else:
+            return None, None, False
+        
+        # Get maximum of quadratic function
+        res = minimize(lambda x: -self.quadfit.quadratic_nd(x, *self.quadfit.coefficients),
+                       self.center, method='SLSQP',
+                       constraints={'type': 'ineq',
+                                    'fun' : self.elliptic_constraint_fun,
+                                    'args': [amat]},
+                       tol=ztol)
+
+        # Check to make sure the maximum satisfies the elliptic constraint
+        if res.success and self.elliptic_constraint_fun(res.x, amat) >= 0.0:
+            # Construct fmax
+            fmax = self.quadfit.quadratic_nd(res.x, *self.quadfit.coefficients)
+        else:
+            return None, None, False
+        
+        return fmin, fmax, True
     
     def get_extrema(self, amat, zmat):
-        w, v = np.linalg.eig(zmat)
+        lambdas, v = np.linalg.eig(amat)
 
         # Construct f1 (f_i)
         f1 = self.quadfit.get_coefs_first()
@@ -321,23 +450,16 @@ class EllipticOptimize(object):
             print('f2 is: ')
             print(f2)
 
-        lambdas = np.zeros(self.dm)
-
-        for k in range(self.dm):
-            lambdas[k] = 1.0 / w[k]
-
         if self.verbose:
             print('lambdas: ')
             print(lambdas)
 
         g1 = np.zeros(self.dm)
-
         for k in range(self.dm):
             for i in range(self.dm):
                 g1[k] += fp1[i] * v[i,k]
 
         g2 = np.zeros((self.dm, self.dm))
-
         for k in range(self.dm):
             for l in range(self.dm):
                 for j in range(self.dm):
@@ -350,14 +472,12 @@ class EllipticOptimize(object):
             print('g2 is: ')
             print(g2)
 
-        gp1 = np.zeros(self.dm)
-        for k in range(self.dm): 
-            gp1[k] = g1[k] / np.sqrt(lambdas[k])
+        gp1 = g1/np.sqrt(lambdas)
 
         gp2 = np.zeros((self.dm,self.dm))
         for k in range(self.dm):
             for l in range(self.dm):
-                gp2[k,l] = g2[k,l] / (np.sqrt(lambdas[k]) * np.sqrt(lambdas[l]))
+                gp2[k,l] = g2[k,l]/(np.sqrt(lambdas[k]) * np.sqrt(lambdas[l]))
 
         if self.verbose:
             print('gp1 is: ')
@@ -379,28 +499,7 @@ class EllipticOptimize(object):
             for k in range(self.dm):
                 hp[p] += u[k,p] * gp1[k]
 
-        tp = np.zeros(self.dm)
-
-        # Find where the objective function is extremized within the ellipse
-        for k in range(self.dm):
-            tp[k] = -hp[k] / (2.0 * mu[k])
-
-        if self.verbose:
-            print("tp is:")
-            print(tp)
-
-            print("sum of tp**2 is:")
-            print(np.sum(tp**2))
-
-            if (np.sum(tp**2)) <= 1.0:
-                print ('Extremum found in the interior of the domain.')
-            else:
-                print('Extremum not found in the interior of the domain.')
-
-            print("objective function:")
-            print(self.quad_transform_nd(fp0, hp, mu, tp))
-
-        # Now find extrema of the objective function on the ellipse boundary
+        # Prepare to find extrema of the objective function on the ellipse boundary
         
         # Get the sorted poles of chi(lambda) where chi -> Infinity
         poles = np.sort(-mu)
@@ -408,9 +507,14 @@ class EllipticOptimize(object):
         # Get lo and hi bounds of the roots lambda
         llo, lhi = self.get_lambda_bounds(hp, mu)
 
+        if self.verbose:
+            print('found bounds on lambda:')
+            print('LO: chi({}) = {}'.format(llo, self.chi(llo, hp, mu)))
+            print('HI: chi({}) = {}'.format(lhi, self.chi(lhi, hp, mu)))            
+
         # lo and hi bounds of intervals to look for roots
-        intlo = [llo, lhi]
-        inthi = [poles[0], poles[-1]]
+        intlo = [llo, poles[-1]]
+        inthi = [poles[0], lhi]
 
         # List of roots for lambda
         lroots = []
@@ -440,6 +544,8 @@ class EllipticOptimize(object):
         # Search between all the intervals to locate roots
         maxiter = 1000000
         for ilo, ihi in zip(intlo, inthi):
+            if self.verbose:
+                print('Locating chi roots between {} and {}'.format(ilo, ihi))
             xr, res = brentq(self.chi, ilo, ihi, args=(hp, mu),
                              maxiter=maxiter, full_output=True)
             if res.converged:
@@ -453,44 +559,63 @@ class EllipticOptimize(object):
             print('Found roots of chi(x): {}'.format(lroots))
                 
         # Find the maximum and minimum of f(t) given the roots of chi
-        fextrema = np.zeros(len(lroots)+1)
-        fextrema[0] = self.quad_transform_nd(fp0, hp, mu, tp)
-        tplist = [tp] # Check f at the extremum found within the ellipse
-        for i, xr in enumerate(lroots):
-            tpi = self.get_tp_from_lambda(xr, hp, mu)
-            if self.verbose:
-                print('sum tpi: {}'.format(np.sum(tpi**2)))
-            tplist.append(tpi)
-            fextrema[i+1] = self.quad_transform_nd(fp0, hp, mu, tpi)
+        fextrema = []
+        tplist   = []
+
+        # Find the extrema of f(t) inside the ellipse
+        # Find where the objective function is extremized within the ellipse
+        tp = -hp/(2.0 * mu)
 
         if self.verbose:
-            print('Values of f at roots of chi(x): {}'.format(fextrema[1:]))
+            print("tp is:")
+            print(tp)
 
-            # 2D sanity checking
-            npts = 1000
+            print("sum of tp**2 is:")
+            print(np.sum(tp**2))
 
-            x_arr = np.linspace(self.lo[0], self.hi[1], npts)
-            y_arr = np.linspace(self.lo[0], self.hi[1], npts)
-            x_arr, y_arr = np.meshgrid(x_arr, y_arr)
-            z_arr = np.copy(x_arr)
+            if (np.sum(tp**2)) <= 1.0:
+                print ('Unconstrained extremum found in the interior of the domain.')
+            else:
+                print('Unconstrained extremum not found in the interior of the domain.')
 
-            for i in range(npts):
-                for j in range(npts):
-                    x_arr[i,j] = x_arr[i,j]
+            print("objective function:")
+            print(self.quad_transform_nd(fp0, hp, mu, tp))
+        
+        # Check tp found above to see if it is really within the ellipse
+        if np.sum(tp**2) <= 1.0:
+            ftpi = self.quad_transform_nd(fp0, hp, mu, tp)
+            fextrema.append(ftpi)
+            tplist.append(tp)
+            if self.verbose:
+                print('Value of f at internal extrema: {}'.format(ftpi))
+            
+        for i, xr in enumerate(lroots):
+            tpi = self.get_tp_from_lambda(xr, hp, mu)
+            ftpi = self.quad_transform_nd(fp0, hp, mu, tpi)
+            if self.verbose:
+                print('sum tpi: {}'.format(np.sum(tpi**2)))
+                print('f(tpi): {}'.format(ftpi))                
+            fextrema.append(ftpi)
+            tplist.append(tpi)            
 
-            for i in range(npts):
-                for j in range(npts):
-                    y_arr[i,j] = y_arr[i,j]
-
-            for i in range(npts):
-                for j in range(npts):
-                    z_arr[i,j] = self.quadfit.quadratic_nd([x_arr[i,j], y_arr[i,j]],
-                                                           *self.quadfit.coefficients)
-
-            mask = np.where(amat[0,0]*(x_arr-self.center[0])**2 + amat[1,1]*(y_arr-self.center[1])**2 <= 1.0)
-
-            print("Sampled Minimum in elliptical region is: ", np.min(z_arr[mask]))
-            print("Sampled Maximum in elliptical region is: ", np.max(z_arr[mask]))
+        xval_test = np.linspace(llo, lhi, 10000)
+        xval_vec  = []
+        fval_vec  = []
+        for xvt in xval_test:
+            tpi = self.get_tp_from_lambda(xvt, hp, mu)
+            if np.sum(tpi**2) <= 1:
+                fvi = self.quad_transform_nd(fp0, hp, mu, tpi)
+                xval_vec.append(xvt)
+                fval_vec.append(fvi)
+                
+        imax, fmax = max(enumerate(fval_vec), key=operator.itemgetter(1))
+        imin, fmin = min(enumerate(fval_vec), key=operator.itemgetter(1))
+        print('TESTING: found fmax = {}'.format(fmax))
+        print('TESTING: found fmin = {}'.format(fmin))        
+        plt.plot(xval_vec, fval_vec)
+        plt.xlabel('lambda')
+        plt.ylabel('f(lambda)')
+        plt.savefig('flambda.eps')
             
         if len(fextrema) < 2:
             if self.verbose:
@@ -505,6 +630,8 @@ class EllipticOptimize(object):
             lambda_max = lroots[imax]
             tpmin = tplist[imin]
             lambda_min = lroots[imin]
+            xmin = self.get_x_from_tp(tpmin, u, lambdas, v)
+            xmax = self.get_x_from_tp(tpmax, u, lambdas, v)            
             success = True
             if self.verbose:
                 print("At Function Maximum :")
@@ -513,6 +640,8 @@ class EllipticOptimize(object):
 
                 print("sum of tp**2 :")
                 print(np.sum(tpmax**2))
+
+                print('x : {}'.format(xmin))
 
                 print("function maximum :")
                 print(fmax)
@@ -526,6 +655,8 @@ class EllipticOptimize(object):
                 print("sum of tp**2 :")
                 print(np.sum(tpmin**2))
 
+                print('x : {}'.format(xmax))
+                
                 print("function minimum :")
                 print(fmin)
 
