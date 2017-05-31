@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import cauchy
 
-fig, ax = plt.subplots(1,1)
+fig, ax = plt.subplots(figsize=(9, 6))
 mean,var,skew,kurt = cauchy.stats(moments='mvsk')
 
 x = np.linspace(cauchy.ppf(0.01),cauchy.ppf(0.99),1000000)
@@ -21,6 +21,8 @@ ax.plot(x, cauchy.pdf(x, loc=0.53432, scale=0.0382 ), color='#6ca6cd', lw=3, lab
 #ax.plot(x, cauchy.pdf(x, loc=0.59613, scale=0.0988 ), color='#f5ce00', lw=3, label='$\Delta=0.0988$')
 #ax.plot(x, cauchy.pdf(x, loc=0.53622, scale=0.0349 ), color='#ff6600', lw=3, label='$\Delta=0.0349$')
 
+midp = 0.5*(0.488+0.580)
+
 ax.plot(0.580*ons,y,'-',lw=1,color='#474747')
 ax.plot(0.488*ons,y,'-',lw=1,color='#474747')
 ax.plot(0.588*ons,y,'--',lw=1,color='#474747')
@@ -30,20 +32,23 @@ ax.plot(0.472*ons,y,':',lw=1,color='#7f7f7f')
 x1 = np.linspace(0.488,0.580,100)
 x2 = np.linspace(0.480,0.588,100)
 x3 = np.linspace(0.472,0.596,100)
+textoffset = 0.2
 ax.plot(x1,5*ons,'-',color='r')
 ax.plot(x2,3*ons,'--',color='r')
 ax.plot(x3,ons,':',color='r')
 #ax.plot(x2,5.*ons,lw=1,'r--')
 #ax.plot(x3,4.*ons,lw=1,'r--')
 
-ax.legend(loc='best',frameon=False)
+ax.legend(loc='best', frameon=False, prop={'size':11})
 ax.set_xlim([0.4,0.68])
 ax.set_ylim([0,9])
 
-plt.text(0.495,5.2,'$[y+(\Delta+\sigma),y-(\Delta+\sigma)]$',fontsize=11)
-plt.text(0.4925,3.2,'$[y+(\Delta+2\sigma),y-(\Delta+2\sigma)]$',fontsize=11)
-plt.text(0.4925,1.2,'$[y+(\Delta+3\sigma),y-(\Delta+3\sigma)]$',fontsize=11)
-
+plt.text(0.495,5.2, '$[\\tilde{y}+(\Delta_y+\sigma_{\Delta_y}),\\tilde{y}-(\Delta_y+\sigma_{\Delta_y})]$',fontsize=11)
+plt.text(0.4925,3.2,'$[\\tilde{y}+(\Delta_y+2\sigma_{\Delta_y}),\\tilde{y}-(\Delta_y+2\sigma_{\Delta_y})]$',fontsize=11)
+plt.text(0.4925,1.2,'$[\\tilde{y}+(\Delta_y+3\sigma_{\Delta_y}),\\tilde{y}-(\Delta_y+3\sigma_{\Delta_y})]$',fontsize=11)
+plt.text(midp, 4.7, '$68.3\%$', color='red', fontsize=11, horizontalalignment='center')
+plt.text(midp, 2.7, '$95.5\%$', color='red', fontsize=11, horizontalalignment='center')
+plt.text(midp, 0.7, '$99.7\%$', color='red', fontsize=11, horizontalalignment='center')
 #ax.set_title('Cauchy PDF')
 
 #plt.text(-2.0,0.2,'$\Delta=0.53$',fontsize=12)
@@ -53,5 +58,9 @@ plt.text(0.4925,1.2,'$[y+(\Delta+3\sigma),y-(\Delta+3\sigma)]$',fontsize=11)
 
 #plt.text(-11,0.0,'$f(z) = \\frac{\Delta}{\pi(z^2 + \Delta^2)}$', fontsize=20)
 
-fig.savefig('cauchy2.eps',format='eps',dpi=1000)
+plt.xlabel('$y$')
+plt.ylabel('$\\rho(y)$')
+plt.tight_layout()
+
+fig.savefig('cauchy2_v4.eps',format='eps',dpi=1000)
 plt.show()
