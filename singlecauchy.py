@@ -8,11 +8,12 @@ fig, ax = plt.subplots(figsize=(9, 6))
 mean,var,skew,kurt = cauchy.stats(moments='mvsk')
 
 x = np.linspace(cauchy.ppf(0.01),cauchy.ppf(0.99),1000000)
-y = np.linspace(0,6.8,100)
+y = np.linspace(0,6.6,100)
 ons = np.ones(100)
 
 plt.rc('text', usetex=True)
 plt.rc('font', family='serif')
+fsize = 18
 
 #2c0032
 ax.plot(x, cauchy.pdf(x, loc=0.53432, scale=0.0382 ), color='#6ca6cd', lw=3, label='$\Delta=0.0382, \sigma=0.0079$')
@@ -45,13 +46,13 @@ ax.legend(loc='best', frameon=False, prop={'size':13})
 ax.set_xlim([0.4,0.68])
 ax.set_ylim([0,9])
 
-plt.text(midp,5.2, '$1-\sigma$ Bounds', color='red', fontsize=11, horizontalalignment='center')
-plt.text(midp,3.2, '$2-\sigma$ Bounds', color='red', fontsize=11, horizontalalignment='center')
-plt.text(midp,1.2, '$3-\sigma$ Bounds', color='red', fontsize=11, horizontalalignment='center')
+plt.text(midp,5.2, '$1-\sigma$ Interval', color='red', fontsize=fsize, horizontalalignment='center')
+plt.text(midp,3.2, '$2-\sigma$ Interval', color='red', fontsize=fsize, horizontalalignment='center')
+plt.text(midp,1.2, '$3-\sigma$ Interval', color='red', fontsize=fsize, horizontalalignment='center')
 
-plt.text(midp, 4.7, '$68.3\%$', color='red', fontsize=11, horizontalalignment='center')
-plt.text(midp, 2.7, '$95.5\%$', color='red', fontsize=11, horizontalalignment='center')
-plt.text(midp, 0.7, '$99.7\%$', color='red', fontsize=11, horizontalalignment='center')
+plt.text(midp, 4.5, '$68.3\%$', color='red', fontsize=fsize, horizontalalignment='center')
+plt.text(midp, 2.5, '$95.5\%$', color='red', fontsize=fsize, horizontalalignment='center')
+plt.text(midp, 0.5, '$99.7\%$', color='red', fontsize=fsize, horizontalalignment='center')
 #ax.set_title('Cauchy PDF')
 
 #plt.text(-2.0,0.2,'$\Delta=0.53$',fontsize=12)
