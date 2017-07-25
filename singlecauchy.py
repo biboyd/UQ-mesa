@@ -8,7 +8,7 @@ fig, ax = plt.subplots(figsize=(9, 6))
 mean,var,skew,kurt = cauchy.stats(moments='mvsk')
 
 x = np.linspace(cauchy.ppf(0.01),cauchy.ppf(0.99),1000000)
-y = np.linspace(0.5,6.5,100)
+y = np.linspace(0,6.8,100)
 ons = np.ones(100)
 
 plt.rc('text', usetex=True)
@@ -33,19 +33,22 @@ x1 = np.linspace(0.488,0.580,100)
 x2 = np.linspace(0.480,0.588,100)
 x3 = np.linspace(0.472,0.596,100)
 textoffset = 0.2
-ax.plot(x1,5*ons,'-',color='r')
-ax.plot(x2,3*ons,'--',color='r')
-ax.plot(x3,ons,':',color='r')
+
+ax.plot(x1,5*ons,'-',color='r', label='$[\\tilde{y}+(\Delta_y+\sigma_{\Delta_y}),\\tilde{y}-(\Delta_y+\sigma_{\Delta_y})]$')
+ax.plot(x2,3*ons,'--',color='r', label='$[\\tilde{y}+(\Delta_y+2\sigma_{\Delta_y}),\\tilde{y}-(\Delta_y+2\sigma_{\Delta_y})]$')
+ax.plot(x3,ons,':',color='r', label='$[\\tilde{y}+(\Delta_y+3\sigma_{\Delta_y}),\\tilde{y}-(\Delta_y+3\sigma_{\Delta_y})]$')
+
 #ax.plot(x2,5.*ons,lw=1,'r--')
 #ax.plot(x3,4.*ons,lw=1,'r--')
 
-ax.legend(loc='best', frameon=False, prop={'size':11})
+ax.legend(loc='best', frameon=False, prop={'size':13})
 ax.set_xlim([0.4,0.68])
 ax.set_ylim([0,9])
 
-plt.text(0.495,5.2, '$[\\tilde{y}+(\Delta_y+\sigma_{\Delta_y}),\\tilde{y}-(\Delta_y+\sigma_{\Delta_y})]$',fontsize=11)
-plt.text(0.4925,3.2,'$[\\tilde{y}+(\Delta_y+2\sigma_{\Delta_y}),\\tilde{y}-(\Delta_y+2\sigma_{\Delta_y})]$',fontsize=11)
-plt.text(0.4925,1.2,'$[\\tilde{y}+(\Delta_y+3\sigma_{\Delta_y}),\\tilde{y}-(\Delta_y+3\sigma_{\Delta_y})]$',fontsize=11)
+plt.text(midp,5.2, '$1-\sigma$ Bounds', color='red', fontsize=11, horizontalalignment='center')
+plt.text(midp,3.2, '$2-\sigma$ Bounds', color='red', fontsize=11, horizontalalignment='center')
+plt.text(midp,1.2, '$3-\sigma$ Bounds', color='red', fontsize=11, horizontalalignment='center')
+
 plt.text(midp, 4.7, '$68.3\%$', color='red', fontsize=11, horizontalalignment='center')
 plt.text(midp, 2.7, '$95.5\%$', color='red', fontsize=11, horizontalalignment='center')
 plt.text(midp, 0.7, '$99.7\%$', color='red', fontsize=11, horizontalalignment='center')
@@ -62,5 +65,5 @@ plt.xlabel('$y$')
 plt.ylabel('$\\rho(y)$')
 plt.tight_layout()
 
-fig.savefig('cauchy2_v4.eps',format='eps',dpi=1000)
+fig.savefig('cauchy2_v5.eps',format='eps',dpi=1000)
 plt.show()
