@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import cauchy
 
-fig, ax = plt.subplots(figsize=(9, 6))
+fig, ax = plt.subplots(figsize=(9, 7))
 mean,var,skew,kurt = cauchy.stats(moments='mvsk')
 
 x = np.linspace(cauchy.ppf(0.01),cauchy.ppf(0.99),1000000)
