@@ -187,7 +187,7 @@ class QuadraticFit(object):
         self.std_error = np.sqrt(np.diag(self.covariance))
 
 class EllipticOptimize(object):
-    def __init__(self, quadfit, lo, hi, verbose=False):
+    def __init__(self, quadfit, lo, hi, nmesh=False, verbose=False):
         # Given a QuadraticFit object, optimize the quadratic function
         # over the outer and inner ellipses defined by the
         # rectangular region [lo, hi].
@@ -201,6 +201,12 @@ class EllipticOptimize(object):
         self.amat_outer = []
         self.zmat_inner = []
         self.zmat_outer = []
+        if nmesh:
+            self.domesh  = True
+            self.nmeshpts = nmesh
+        else:
+            self.domesh = False
+            self.nmeshpts = 0
         self.verbose = verbose
         self.minmax_inner = None
         self.minmax_outer = None
@@ -210,47 +216,71 @@ class EllipticOptimize(object):
 
         if self.verbose:
             print('\n------------ INNER ELLIPSE OPTIMIZATION')
-        self.inner_min, self.inner_max, isuccess = self.get_extrema(self.amat_inner,
-                                                                    self.zmat_inner)
+        self.inner_min, self.inner_max, self.inner_xmin, self.inner_xmax, isuccess = self.get_extrema(self.amat_inner)
+
         if self.verbose:
             print('\n------------ INNER ELLIPSE SUMMARY')
             print('solved inner min = {}'.format(self.inner_min))
+            print('inner min at x = {}'.format(self.inner_xmin))                        
             print('solved inner max = {}'.format(self.inner_max))
-            
-        inner_min, inner_max, isuccess2 = self.get_extrema_slsqp(self.amat_inner)
-        if self.verbose:
-            print('SLSQP inner min = {}'.format(inner_min))
-            print('SLSQP inner max = {}'.format(inner_max))
-            
-        inner_min, inner_max, xmin, xmax, isuccess3 = self.get_extrema_mesh(self.amat_inner)
-        if self.verbose:
-            print('Mesh Sampling inner min = {}'.format(inner_min))
-            print('inner min at x = {}'.format(xmin))            
-            print('Mesh Sampling inner max = {}'.format(inner_max))
-            print('inner max at x = {}'.format(xmax))                        
+            print('inner max at x = {}'.format(self.inner_xmax))                                    
+
+        # This doesn't work
+        # inner_min, inner_max, isuccess2 = self.get_extrema_slsqp(self.amat_inner)
+        # if self.verbose:
+        #     print('SLSQP inner min = {}'.format(inner_min))
+        #     print('SLSQP inner max = {}'.format(inner_max))
+
+        isuccess2 = True
+
+        if self.domesh:
+            self.mesh_inner_min, self.mesh_inner_max, self.mesh_inner_xmin, self.mesh_inner_xmax, isuccess3 = self.get_extrema_mesh(self.amat_inner, self.nmeshpts)
+            if self.verbose:
+                print('Mesh Sampling inner min = {}'.format(self.mesh_inner_min))
+                print('inner min at x = {}'.format(self.mesh_inner_xmin))            
+                print('Mesh Sampling inner max = {}'.format(self.mesh_inner_max))
+                print('inner max at x = {}'.format(self.mesh_inner_xmax))
+        else:
+            self.mesh_inner_min = None
+            self.mesh_inner_max = None
+            self.mesh_inner_xmin = None
+            self.mesh_inner_xmax = None
+            isuccess3 = True
             
         isuccess = isuccess and isuccess2 and isuccess3
             
         if self.verbose:
             print('\n------------ OUTER ELLIPSE OPTIMIZATION')
-        self.outer_min, self.outer_max, osuccess = self.get_extrema(self.amat_outer,
-                                                                    self.zmat_outer)
+        self.outer_min, self.outer_max, self.outer_xmin, self.outer_xmax, osuccess = self.get_extrema(self.amat_outer)
+        
         if self.verbose:
             print('\n------------ OUTER ELLIPSE SUMMARY')            
             print('solved outer min = {}'.format(self.outer_min))
+            print('outer min at x = {}'.format(self.outer_xmin))            
             print('solved outer max = {}'.format(self.outer_max))
+            print('outer max at x = {}'.format(self.outer_xmax))                        
+
+        # This doesn't work
+        # outer_min, outer_max, osuccess2 = self.get_extrema_slsqp(self.amat_outer)
+        # if self.verbose:
+        #     print('SLSQP outer min = {}'.format(outer_min))
+        #     print('SLSQP outer max = {}'.format(outer_max))
+
+        osuccess2 = True
         
-        outer_min, outer_max, osuccess2 = self.get_extrema_slsqp(self.amat_outer)
-        if self.verbose:
-            print('SLSQP outer min = {}'.format(outer_min))
-            print('SLSQP outer max = {}'.format(outer_max))
-            
-        outer_min, outer_max, xmin, xmax, osuccess3 = self.get_extrema_mesh(self.amat_outer)
-        if self.verbose:
-            print('Mesh Sampling outer min = {}'.format(outer_min))
-            print('outer min at x = {}'.format(xmin))
-            print('Mesh Sampling outer max = {}'.format(outer_max))
-            print('outer max at x = {}'.format(xmax))            
+        if self.domesh:            
+            self.mesh_outer_min, self.mesh_outer_max, self.mesh_outer_xmin, self.mesh_outer_xmax, osuccess3 = self.get_extrema_mesh(self.amat_outer, self.nmeshpts)
+            if self.verbose:
+                print('Mesh Sampling outer min = {}'.format(self.mesh_outer_min))
+                print('outer min at x = {}'.format(self.mesh_outer_xmin))
+                print('Mesh Sampling outer max = {}'.format(self.mesh_outer_max))
+                print('outer max at x = {}'.format(self.mesh_outer_xmax))            
+        else:
+            self.mesh_outer_min = None
+            self.mesh_outer_max = None
+            self.mesh_outer_xmin = None
+            self.mesh_outer_xmax = None
+            osuccess3 = True
             
         osuccess = osuccess and osuccess2 and osuccess3
             
@@ -258,11 +288,36 @@ class EllipticOptimize(object):
 
     def writelog(self, file_handle):
         # Given a file_handle, write a log of the Elliptic Optimization
-        file_handle.write('# ELLIPTIC OPTIMIZATION LOG\n')
+        file_handle.write('\n# ELLIPTIC OPTIMIZATION LOG\n')
         file_handle.write('# INNER MINIMUM, INNER MAXIMUM:\n')
         file_handle.write('{}, {}\n'.format(self.inner_min, self.inner_max))
+        file_handle.write('# LOCATION OF INNER MINIMUM:\n')
+        file_handle.write('{}\n'.format(self.inner_xmin))        
+        file_handle.write('# LOCATION OF INNER MAXIMUM:\n')
+        file_handle.write('{}\n'.format(self.inner_xmax))                
         file_handle.write('# OUTER MINIMUM, OUTER MAXIMUM:\n')
-        file_handle.write('{}, {}\n'.format(self.outer_min, self.outer_max))
+        file_handle.write('{}, {}\n'.format(self.outer_min, self.outer_max))        
+        file_handle.write('# LOCATION OF OUTER MINIMUM:\n')
+        file_handle.write('{}\n'.format(self.outer_xmin))                
+        file_handle.write('# LOCATION OF OUTER MAXIMUM:\n')
+        file_handle.write('{}\n'.format(self.outer_xmax))                        
+
+        # Write a log of the Mesh Optimization
+        file_handle.write('\n# ELLIPTIC MESH SAMPLING LOG\n')
+        file_handle.write('# NUMBER OF POINTS PER DIMENSION:\n')
+        file_handle.write('{}\n'.format(self.nmeshpts))
+        file_handle.write('# INNER MINIMUM, INNER MAXIMUM:\n')
+        file_handle.write('{}, {}\n'.format(self.mesh_inner_min, self.mesh_inner_max))
+        file_handle.write('# LOCATION OF INNER MINIMUM:\n')
+        file_handle.write('{}\n'.format(self.mesh_inner_xmin))        
+        file_handle.write('# LOCATION OF INNER MAXIMUM:\n')
+        file_handle.write('{}\n'.format(self.mesh_inner_xmax))                
+        file_handle.write('# OUTER MINIMUM, OUTER MAXIMUM:\n')
+        file_handle.write('{}, {}\n'.format(self.mesh_outer_min, self.mesh_outer_max))        
+        file_handle.write('# LOCATION OF OUTER MINIMUM:\n')
+        file_handle.write('{}\n'.format(self.mesh_outer_xmin))                
+        file_handle.write('# LOCATION OF OUTER MAXIMUM:\n')
+        file_handle.write('{}\n'.format(self.mesh_outer_xmax))                        
         
     def quad_transform_nd(self, fp0, hp, mu, tp):
         f = fp0
@@ -347,7 +402,7 @@ class EllipticOptimize(object):
             f -= amat[i,i] * (z[i] - self.center[i])**2
         return f
 
-    def get_extrema_mesh(self, amat, npts=100):
+    def get_extrema_mesh(self, amat, npts=1000):
         x_arr = [np.linspace(ilo, ihi, npts) for ilo, ihi in zip(self.lo, self.hi)]
         x_mesh = np.meshgrid(*x_arr)
         z_arr = np.copy(x_mesh[0])
@@ -411,7 +466,7 @@ class EllipticOptimize(object):
         
         return fmin, fmax, True
     
-    def get_extrema(self, amat, zmat):
+    def get_extrema(self, amat):
         lambdas, v = np.linalg.eig(amat)
 
         # Construct f1 (f_i)
@@ -427,7 +482,9 @@ class EllipticOptimize(object):
                     f2[i,j] = csecond[i]
                 else:
                     k = self.quadfit.cross_indices[i,j]
-                    f2[i,j] = ccross[k]
+                    # Halve the cross coefficient
+                    # since it is the sum of f2[i,j]+f2[j,i]
+                    f2[i,j] = 0.5 * ccross[k]
 
         # Construct fp0 (f'_0)
         fp0 = self.quadfit.get_coefs_const()
@@ -598,30 +655,39 @@ class EllipticOptimize(object):
             fextrema.append(ftpi)
             tplist.append(tpi)            
 
-        xval_test = np.linspace(llo, lhi, 10000)
-        xval_vec  = []
-        fval_vec  = []
-        for xvt in xval_test:
-            tpi = self.get_tp_from_lambda(xvt, hp, mu)
-            if np.sum(tpi**2) <= 1:
-                fvi = self.quad_transform_nd(fp0, hp, mu, tpi)
-                xval_vec.append(xvt)
-                fval_vec.append(fvi)
-                
-        imax, fmax = max(enumerate(fval_vec), key=operator.itemgetter(1))
-        imin, fmin = min(enumerate(fval_vec), key=operator.itemgetter(1))
-        print('TESTING: found fmax = {}'.format(fmax))
-        print('TESTING: found fmin = {}'.format(fmin))        
-        plt.plot(xval_vec, fval_vec)
-        plt.xlabel('lambda')
-        plt.ylabel('f(lambda)')
-        plt.savefig('flambda.eps')
+        if self.verbose:
+            xval_test = np.linspace(llo, lhi, 10000)
+            xval_vec  = []
+            fval_vec  = []
+            for xvt in xval_test:
+                tpi = self.get_tp_from_lambda(xvt, hp, mu)
+                if np.sum(tpi**2) <= 1:
+                    fvi = self.quad_transform_nd(fp0, hp, mu, tpi)
+                    xval_vec.append(xvt)
+                    fval_vec.append(fvi)
+
+            imax, fmax = max(enumerate(fval_vec), key=operator.itemgetter(1))
+            imin, fmin = min(enumerate(fval_vec), key=operator.itemgetter(1))
+            print('TESTING: found max(fval_vec) = {}'.format(fmax))
+            print('TESTING: found min(fval_vec) = {}'.format(fmin))
+            
+            if np.array_equal(amat, self.amat_inner):
+                label = 'Inner Ellipse'
+            else:
+                label = 'Outer Ellipse'
+            plt.plot(xval_vec, fval_vec, label=label)
+            plt.legend(loc='upper center')
+            plt.xlabel('Lagrange Multiplier')
+            plt.ylabel('f(x) on Ellipse Boundary')
+            plt.savefig('fx_lagrange_multiplier.eps')
             
         if len(fextrema) < 2:
             if self.verbose:
                 print('ERROR: insufficient function extrema found!')
             fmax = None
             fmin = None
+            xmin = None
+            xmax = None
             success = False
         else:
             imax, fmax = max(enumerate(fextrema), key=operator.itemgetter(1))
@@ -660,10 +726,10 @@ class EllipticOptimize(object):
                 print("function minimum :")
                 print(fmin)
 
-        return fmin, fmax, success
+        return fmin, fmax, xmin, xmax, success
 
 class QuadraticAnalysis(object):    
-    def __init__(self, grid, lo, hi, ofile=None, verbose=False):
+    def __init__(self, grid, lo, hi, nmesh=None, ofile=None, verbose=False):
         self.grid = grid
         self.lo = lo
         self.hi = hi
@@ -671,6 +737,7 @@ class QuadraticAnalysis(object):
         self.outputfile = ofile
         self.qfit = None
         self.eopt = None
+        self.nmesh = nmesh
         self.analyze()
         self.write_results()
         
@@ -678,6 +745,7 @@ class QuadraticAnalysis(object):
         # Do the quadratic fit and elliptic optimization
         self.qfit = QuadraticFit(self.grid)
         self.eopt = EllipticOptimize(self.qfit, self.lo, self.hi,
+                                     nmesh=self.nmesh,
                                      verbose=self.verbose)
 
     def write_results(self):

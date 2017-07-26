@@ -7,13 +7,21 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
 def obj_func_init(x, y):
-    yint = 0.5596    
-    fx = -1.1323     
-    fy = 0.1378      
-    fxx = 5.7688     
-    fyy = -0.2060     
-    fxy = 0.4646/2.0 
-    fyx = 0.4646/2.0 
+    yint = 0.559567248037217
+    fx = -1.1322751540276104
+    fy = 0.13778613804801929
+    fxx = 5.768756688622785
+    fyy = -0.20601276511812017
+    fxy = 0.4645735171653338/2.0
+    fyx = 0.4645735171653338/2.0
+    
+    # yint = 0.5596    
+    # fx = -1.1323     
+    # fy = 0.1378      
+    # fxx = 5.7688     
+    # fyy = -0.2060     
+    # fxy = 0.4646/2.0 
+    # fyx = 0.4646/2.0 
 
     # yint = 0.5490
     # fx = -0.6414
@@ -283,4 +291,4 @@ mask = np.where(x_arr**2 + y_arr**2 <= 1.0)
 print "Minimum in elliptical region is: ", np.min(z_arr[mask])
 print "Maximum in elliptical region is: ", np.max(z_arr[mask])
 
-plt.show()
+#plt.show()

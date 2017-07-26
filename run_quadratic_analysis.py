@@ -13,6 +13,8 @@ parser.add_argument('-lo', '--lo', type=float, nargs='+', required=True,
                     help='Lower bounds of rectangular input uncertainty region.')
 parser.add_argument('-hi', '--hi', type=float, nargs='+', required=True,
                     help='Upper bounds of rectangular input uncertainty region.')
+parser.add_argument('-nm', '--nmeshsample', type=int,
+                    help='If supplied, regularly sample the domain [lo, hi] using a mesh of nmeshsample points in each dimension and report the minimum and maximum of the quadratic fit function over the mesh (useful for sanity-checking or comparison purposes).')
 parser.add_argument('-o','--output', type=str, default='quad.log',
                     help='Name of output file for writing the results (default quad.log).')
 parser.add_argument('-v','--verbose', action='store_true',
@@ -49,8 +51,11 @@ if __name__=='__main__':
         args.numensemble >= npoints_required and
         args.numensemble < len(g.points)):
         ea = EnsembleAnalysis(g, args.lo, args.hi, args.numensemble,
-                              args.output, args.verbose)
+                              ofile=args.output,
+                              verbose=args.verbose)
     # Otherwise do 1 quadratic analysis using all grid points 
     else:
         qa = QuadraticAnalysis(g, args.lo, args.hi,
-                               args.output, args.verbose)
+                               nmesh=args.nmeshsample,
+                               ofile=args.output,
+                               verbose=args.verbose)
