@@ -109,13 +109,21 @@ print v
 
 # Coefficients from quadratic fits
 
-yint = 0.5490
-fx = -0.6414
-fy = 0.1296
-fxx = 2.0293
-fyy = -0.1975
-fxy = 0.4279/2.0
-fyx = 0.4279/2.0
+# yint = 0.5490
+# fx = -0.6414
+# fy = 0.1296
+# fxx = 2.0293
+# fyy = -0.1975
+# fxy = 0.4279/2.0
+# fyx = 0.4279/2.0
+
+yint = 0.559567248037217
+fx = -1.1322751540276104
+fy = 0.13778613804801929
+fxx = 5.768756688622785
+fyy = -0.20601276511812017
+fxy = 0.4645735171653338/2.0
+fyx = 0.4645735171653338/2.0
 
 f_i = [fx, fy]
 f_ij = np.matrix( [[fxx, fxy], [fyx, fyy]] )
@@ -225,6 +233,11 @@ def Cond42(a,b,c):
 N_iter_max = 1000000
 
 N_iter = 1
+
+# Print Values of Cond42 at -100, 0, 100
+print "Cond42 at -100: ", Cond42(h_p, mu, -100.0)
+print "Cond42 at 0: ", Cond42(h_p, mu, 0.0)
+print "Cond42 at 100: ", Cond42(h_p, mu, 100.0)
 
 # Change this range to [-100, 0] (say) to get the other bound
 
