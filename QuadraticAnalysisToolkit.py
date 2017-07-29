@@ -85,7 +85,8 @@ class QuadraticFit(object):
         file_handle.write('# INTERCEPT:\n')
         file_handle.write('{}\n'.format(self.get_coefs_const()))
         file_handle.write('# FIRST ORDER COEFFICIENTS:\n')
-        for ci, dci in zip(self.get_coefs_first(), self.get_coefs_first(self.std_error)):
+        for ci, dci in zip(self.get_coefs_first(),
+                           self.get_coefs_first(self.std_error)):
             file_handle.write('{} +/- {}\n'.format(ci, dci))
         file_handle.write('# CROSS COEFFICIENTS:\n')
         ccross = self.get_coefs_cross()
@@ -95,7 +96,8 @@ class QuadraticFit(object):
             i, j = self.get_cross_indices(k)
             file_handle.write('({},{}) : {} +/- {}\n'.format(i,j,ck,dck))
         file_handle.write('# SECOND ORDER COEFFICIENTS:\n')
-        for ci, dci in zip(self.get_coefs_second(), self.get_coefs_second(self.std_error)):
+        for ci, dci in zip(self.get_coefs_second(),
+                           self.get_coefs_second(self.std_error)):
             file_handle.write('{} +/- {}\n'.format(ci, dci))
         
     def init_cross_indices(self):
@@ -182,7 +184,8 @@ class QuadraticFit(object):
 
     def do_quad_fit(self):
         self.coefficients, self.covariance = curve_fit(self.quadratic_nd,
-                                                       self.grid.coords, self.grid.values,
+                                                       self.grid.coords,
+                                                       self.grid.values,
                                                        p0=np.ones(self.ncoefs))
         self.std_error = np.sqrt(np.diag(self.covariance))
 
@@ -221,9 +224,9 @@ class EllipticOptimize(object):
         if self.verbose:
             print('\n------------ INNER ELLIPSE SUMMARY')
             print('solved inner min = {}'.format(self.inner_min))
-            print('inner min at x = {}'.format(self.inner_xmin))                        
+            print('inner min at x = {}'.format(self.inner_xmin))
             print('solved inner max = {}'.format(self.inner_max))
-            print('inner max at x = {}'.format(self.inner_xmax))                                    
+            print('inner max at x = {}'.format(self.inner_xmax))
 
         # This doesn't work
         # inner_min, inner_max, isuccess2 = self.get_extrema_slsqp(self.amat_inner)
