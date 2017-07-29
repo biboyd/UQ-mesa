@@ -696,12 +696,21 @@ class EllipticOptimize(object):
             imax, fmax = max(enumerate(fextrema), key=operator.itemgetter(1))
             imin, fmin = min(enumerate(fextrema), key=operator.itemgetter(1))
             tpmax = tplist[imax]
-            lambda_max = lroots[imax]
             tpmin = tplist[imin]
-            lambda_min = lroots[imin]
             xmin = self.get_x_from_tp(tpmin, u, lambdas, v)
             xmax = self.get_x_from_tp(tpmax, u, lambdas, v)            
             success = True
+
+            min_on_boundary = False
+            max_on_boundary = False
+            
+            if imin != 0:
+                min_on_boundary = True
+                lambda_min = lroots[imin-1]
+            if imax != 0:
+                max_on_boundary = True
+                lambda_max = lroots[imax-1]          
+            
             if self.verbose:
                 print("At Function Maximum :")
                 print("tp :")
@@ -714,6 +723,8 @@ class EllipticOptimize(object):
 
                 print("function maximum :")
                 print(fmax)
+
+                print("function maximum on boundary?: {}".format(max_on_boundary))
 
                 print("")
 
@@ -728,6 +739,8 @@ class EllipticOptimize(object):
                 
                 print("function minimum :")
                 print(fmin)
+
+                print("function minimum on boundary?: {}".format(min_on_boundary))                
 
         return fmin, fmax, xmin, xmax, success
 
