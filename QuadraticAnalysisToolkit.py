@@ -570,8 +570,19 @@ class EllipticOptimize(object):
         if self.verbose:
             print('found bounds on lambda:')
             print('LO: chi({}) = {}'.format(llo, self.chi(llo, hp, mu)))
-            print('HI: chi({}) = {}'.format(lhi, self.chi(lhi, hp, mu)))            
-
+            print('HI: chi({}) = {}'.format(lhi, self.chi(lhi, hp, mu)))
+            xval_vec = np.linspace(llo, lhi, 10000)
+            fval_vec = np.array([self.chi(xvvi, hp, mu) for xvvi in xval_vec])
+            plt.plot(xval_vec, fval_vec)
+            for pi in poles:
+                plt.axvline(x=pi, linestyle='--', color='gray')
+            plt.legend(loc='upper center')
+            plt.xlabel('Lagrange Multiplier')
+            plt.ylabel('chi(x) on Ellipse Boundary')
+            plt.ylim([-1, 10])
+            plt.savefig('chix_lagrange_multiplier.eps')
+            plt.clf()
+            
         # lo and hi bounds of intervals to look for roots
         intlo = [llo, poles[-1]]
         inthi = [poles[0], lhi]
@@ -683,6 +694,7 @@ class EllipticOptimize(object):
             plt.xlabel('Lagrange Multiplier')
             plt.ylabel('f(x) on Ellipse Boundary')
             plt.savefig('fx_lagrange_multiplier.eps')
+            plt.clf()
             
         if len(fextrema) < 2:
             if self.verbose:
