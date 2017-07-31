@@ -219,7 +219,7 @@ class EllipticOptimize(object):
 
         if self.verbose:
             print('\n------------ INNER ELLIPSE OPTIMIZATION')
-        self.inner_min, self.inner_max, self.inner_xmin, self.inner_xmax, isuccess = self.get_extrema(self.amat_inner)
+        self.inner_min, self.inner_max, self.inner_xmin, self.inner_xmax, isuccess = self.get_extrema(self.amat_inner, 'inner')
 
         if self.verbose:
             print('\n------------ INNER ELLIPSE SUMMARY')
@@ -254,7 +254,7 @@ class EllipticOptimize(object):
             
         if self.verbose:
             print('\n------------ OUTER ELLIPSE OPTIMIZATION')
-        self.outer_min, self.outer_max, self.outer_xmin, self.outer_xmax, osuccess = self.get_extrema(self.amat_outer)
+        self.outer_min, self.outer_max, self.outer_xmin, self.outer_xmax, osuccess = self.get_extrema(self.amat_outer, 'outer')
         
         if self.verbose:
             print('\n------------ OUTER ELLIPSE SUMMARY')            
@@ -469,7 +469,7 @@ class EllipticOptimize(object):
         
         return fmin, fmax, True
     
-    def get_extrema(self, amat):
+    def get_extrema(self, amat, ellipse_type=None):
         lambdas, v = np.linalg.eig(amat)
 
         # Construct f1 (f_i)
@@ -578,9 +578,9 @@ class EllipticOptimize(object):
                 plt.axvline(x=pi, linestyle='--', color='gray')
             plt.legend(loc='upper center')
             plt.xlabel('Lagrange Multiplier')
-            plt.ylabel('chi(x) on Ellipse Boundary')
+            plt.ylabel('chi(x) on {} ellipse boundary'.format(ellipse_type))
             plt.ylim([-1, 10])
-            plt.savefig('chix_lagrange_multiplier.eps')
+            plt.savefig('chix_lagrange_multiplier_{}.eps'.format(ellipse_type))
             plt.clf()
             
         # lo and hi bounds of intervals to look for roots
@@ -685,15 +685,11 @@ class EllipticOptimize(object):
             print('TESTING: found max(fval_vec) = {}'.format(fmax))
             print('TESTING: found min(fval_vec) = {}'.format(fmin))
             
-            if np.array_equal(amat, self.amat_inner):
-                label = 'Inner Ellipse'
-            else:
-                label = 'Outer Ellipse'
-            plt.plot(xval_vec, fval_vec, label=label)
+            plt.plot(xval_vec, fval_vec)
             plt.legend(loc='upper center')
             plt.xlabel('Lagrange Multiplier')
-            plt.ylabel('f(x) on Ellipse Boundary')
-            plt.savefig('fx_lagrange_multiplier.eps')
+            plt.ylabel('f(x) on {} ellipse boundary'.format(ellipse_type))
+            plt.savefig('fx_lagrange_multiplier_{}.eps'.format(ellipse_type))
             plt.clf()
             
         if len(fextrema) < 2:
