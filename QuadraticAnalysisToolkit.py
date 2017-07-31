@@ -809,7 +809,7 @@ class EnsembleAnalysis(object):
         
     def analyze(self):
         # Do sampling of the points
-        for i, samplepts in enumerate(itertools.combination(self.grid.points, self.nensemble)):
+        for i, samplepts in enumerate(itertools.combinations(self.grid.points, self.nensemble)):
             g = Grid(samplepts)
             qa = QuadraticAnalysis(g, self.lo, self.hi)
             self.success = self.success and qa.eopt.success
