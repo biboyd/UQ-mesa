@@ -21,6 +21,8 @@ parser.add_argument('-v','--verbose', action='store_true',
                     help='If supplied, perform analysis with verbose status printing.')
 parser.add_argument('-nens', '--numensemble', type=int,
                     help='(Optional) Repeat the quadratic analysis to construct an ensemble, with each quadratic fit in the ensemble considering only numensemble points in the csv. The size of the ensemble will be the number of unique combinations of the points in the csv, selected numensemble at a time.')
+parser.add_argument('-maxens', '--maxensemble', type=int, default=500,
+                    help='(Optional) Applies if --numensemble is supplied, sets the maximum size of the ensemble. Defaults to 500.')
 args = parser.parse_args()
         
 if __name__=='__main__':
@@ -51,6 +53,7 @@ if __name__=='__main__':
         args.numensemble >= npoints_required and
         args.numensemble < len(g.points)):
         ea = EnsembleAnalysis(g, args.lo, args.hi, args.numensemble,
+                              max_size_ensemble=args.maxensemble,
                               ofile=args.output,
                               verbose=args.verbose)
     # Otherwise do 1 quadratic analysis using all grid points 
