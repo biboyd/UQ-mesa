@@ -613,7 +613,7 @@ class EllipticOptimize(object):
                     lroots.append(xmin)
 
         # Search between all the intervals to locate roots
-        maxiter = 1000000
+        maxiter = 10000
         for ilo, ihi in zip(intlo, inthi):
             if self.verbose:
                 print('Locating chi roots between {} and {}'.format(ilo, ihi))
@@ -780,7 +780,8 @@ class QuadraticAnalysis(object):
             fout.close()
         
 class EnsembleAnalysis(object):
-    def __init__(self, grid, lo, hi, nensemble, ofile=None, verbose=False):
+    def __init__(self, grid, lo, hi, nensemble, max_size_ensemble=500,
+                 ofile=None, verbose=False):
         self.grid = grid
         self.lo = lo
         self.hi = hi
@@ -804,12 +805,15 @@ class EnsembleAnalysis(object):
         self.nensemble = nensemble
         self.verbose = verbose
         self.outputfile = ofile
-        self.analyze()
+        self.analyze(max_size_ensemble)
         self.write_results()
         
-    def analyze(self):
+    def analyze(self, max_size_ensemble=500):
         # Do sampling of the points
         for i, samplepts in enumerate(itertools.combinations(self.grid.points, self.nensemble)):
+            if i == max_size_ensemble:
+                break
+            print('running combination {} with {} points.'.format(i, len(samplepts)))
             g = Grid(samplepts)
             qa = QuadraticAnalysis(g, self.lo, self.hi)
             self.success = self.success and qa.eopt.success
@@ -836,13 +840,6 @@ class EnsembleAnalysis(object):
                 self.outer_fmax_ave.append(np.mean(self.outer_fmaxlist[:i]))
                 self.outer_fmax_std.append(np.std(self.outer_fmaxlist[:i]))
 
-    def write_ave_std(self, file_handle, average, stdev):
-        # Given a file_handle, write the ave and std with a counter
-        i = 1
-        for ave, std in zip(average, stdev):
-            file_handle.write('{}, {}, {}'.format(i, ave, std))
-            i += 1
-    
     def write_results(self):
         if self.outputfile:
             fout = open(self.outputfile, 'w')
@@ -852,28 +849,20 @@ class EnsembleAnalysis(object):
             else:
                 fout.write('# FAILURE!\n')
             fout.write('# NUMBER OF POINTS PER SAMPLE = {}\n'.format(self.nensemble))
-            fout.write('# BEGIN INNER ELLIPSE MINIMUM:\n')
             fout.write('number samples, '+
                        'inner min ave, '+
-                       'inner min std\n')
-            self.write_ave_std(fout, self.inner_fmin_ave, self.inner_fmin_std)
-            fout.write('# END INNER ELLIPSE MINIMUM:\n')            
-            fout.write('# BEGIN INNER ELLIPSE MAXIMUM:\n')            
-            fout.write('number samples, '+
+                       'inner min std, '+
                        'inner max ave, '+
-                       'inner max std\n')
-            self.write_ave_std(fout, self.inner_fmax_ave, self.inner_fmax_std)            
-            fout.write('# END INNER ELLIPSE MAXIMUM:\n')                        
-            fout.write('# BEGIN OUTER ELLIPSE MINIMUM:\n')            
-            fout.write('number samples, '+
+                       'inner max std, '+
                        'outer min ave, '+
-                       'outer min std\n')
-            self.write_ave_std(fout, self.outer_fmin_ave, self.outer_fmin_std)            
-            fout.write('# END OUTER ELLIPSE MINIMUM:\n')                        
-            fout.write('# BEGIN OUTER ELLIPSE MAXIMUM:\n')            
-            fout.write('number samples, '+
+                       'outer min std, '+
                        'outer max ave, '+
-                       'outer max std\n')
-            self.write_ave_std(fout, self.outer_fmax_ave, self.outer_fmax_std)            
-            fout.write('# END OUTER ELLIPSE MAXIMUM:\n')                        
+                       'outer max std\n')                       
+            i = 1
+            for imina, imins, imaxa, imaxs, omina, omins, omaxa, omaxs in zip(self.inner_fmin_ave, self.inner_fmin_std,
+                                                                              self.inner_fmax_ave, self.inner_fmax_std,
+                                                                              self.outer_fmin_ave, self.outer_fmin_std,
+                                                                              self.outer_fmax_ave, self.outer_fmax_std):
+                fout.write('{}, {}, {}, {}, {}, {}, {}, {}, {}\n'.format(i, imina, imins, imaxa, imaxs, omina, omins, omaxa, omaxs))
+                i += 1
             fout.close()
