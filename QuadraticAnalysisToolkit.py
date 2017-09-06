@@ -866,3 +866,29 @@ class EnsembleAnalysis(object):
                 fout.write('{}, {}, {}, {}, {}, {}, {}, {}, {}\n'.format(i, imina, imins, imaxa, imaxs, omina, omins, omaxa, omaxs))
                 i += 1
             fout.close()
+
+class Histogram(object):
+    def __init__(self, bin_values = [], bin_edges = [], normalize=False):
+        self.bin_values = np.array(bin_values)
+        if any(bin_edges):
+            self.bin_centers = np.array(self.bin_edges_to_centers(bin_edges))
+        else:
+            self.bin_centers = []
+        if any(self.bin_centers):
+            self.center = self.get_center()
+        if any(bin_values) and normalize:
+            self.bin_values = self.bin_values/np.sum(self.bin_values)
+
+    def bin_edges_to_centers(self, bin_edges):
+        binc = []
+        for i, be in enumerate(bin_edges):
+            if i < len(bin_edges) - 1:
+                bc = bin_edges[i] + 0.5*(bin_edges[i+1] - bin_edges[i])
+                binc.append(bc)
+        return np.array(binc)
+
+    def get_center(self):
+        bc = np.sum(self.bin_values * self.bin_centers)/np.sum(self.bin_values)
+        return bc
+            
+        
