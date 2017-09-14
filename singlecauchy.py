@@ -7,7 +7,7 @@ from scipy.stats import cauchy
 fig, ax = plt.subplots(figsize=(8, 7))
 
 ax.set_xlim([0.4,0.68])
-ax.set_ylim([0,10])
+ax.set_ylim([0,9.5])
 
 mean,var,skew,kurt = cauchy.stats(moments='mvsk')
 
@@ -48,13 +48,24 @@ ax.plot(x3,0.8*ons,':',color='r')#, label='$[\\tilde{y}+(\Delta_y+3\sigma_{\Delt
 # ax.text(0.551, 8.5, '$[\\tilde{y}+(\Delta_y+2\sigma_{\Delta_y}),\\tilde{y}-(\Delta_y+2\sigma_{\Delta_y})]$', fontsize=15, bbox=dict(facecolor='None', edgecolor='r', linestyle='--', linewidth=3))
 # ax.text(0.551, 7.8, '$[\\tilde{y}+(\Delta_y+3\sigma_{\Delta_y}),\\tilde{y}-(\Delta_y+3\sigma_{\Delta_y})]$', fontsize=15, bbox=dict(facecolor='None', edgecolor='r', linestyle=':', linewidth=3))
 
-ax.text(0.405, 9.5, '$\Delta=0.0382, \sigma=0.0079$', fontsize=15,
+# ax.text(0.405, 9.5, '$\Delta=0.0382, \sigma=0.0079$', fontsize=fsize,
+#         bbox=dict(facecolor='None', edgecolor='#6ca6cd', linestyle='-', linewidth=3))
+# ax.text(0.54, 9.5, '$[\\tilde{y}+(\Delta_y+\phantom{1}\sigma_{\Delta_y}),\\tilde{y}-(\Delta_y+\phantom{1}\sigma_{\Delta_y})]$', fontsize=fsize,
+#         bbox=dict(facecolor='None', edgecolor='r', linestyle='-', linewidth=2))
+# ax.text(0.54, 8.75, '$[\\tilde{y}+(\Delta_y+2\sigma_{\Delta_y}),\\tilde{y}-(\Delta_y+2\sigma_{\Delta_y})]$', fontsize=fsize,
+#         bbox=dict(facecolor='None', edgecolor='r', linestyle='--', linewidth=2))
+# ax.text(0.405, 8.75, '$[\\tilde{y}+(\Delta_y+3\sigma_{\Delta_y}),\\tilde{y}-(\Delta_y+3\sigma_{\Delta_y})]$', fontsize=fsize,
+#         bbox=dict(facecolor='None', edgecolor='r', linestyle=':', linewidth=2))
+
+ax.text(0.405, 9, '$\Delta=0.0382, \sigma=0.0079$', fontsize=fsize,
         bbox=dict(facecolor='None', edgecolor='#6ca6cd', linestyle='-', linewidth=3))
-ax.text(0.5485, 9.5, '$[\\tilde{y}+(\Delta_y+\phantom{1}\sigma_{\Delta_y}),\\tilde{y}-(\Delta_y+\phantom{1}\sigma_{\Delta_y})]$', fontsize=15,
+ax.text(0.513, 8.925, '$[\\tilde{y}+(\Delta_y+k\cdot\sigma_{\Delta_y}),\\tilde{y}-(\Delta_y+k\cdot\sigma_{\Delta_y})]$', fontsize=fsize,
+        bbox=dict(facecolor='None', edgecolor='#474747', linestyle='-', linewidth=2))
+ax.text(0.6, 4.7, '$k=1$', fontsize=fsize,
         bbox=dict(facecolor='None', edgecolor='r', linestyle='-', linewidth=2))
-ax.text(0.5485, 8.75, '$[\\tilde{y}+(\Delta_y+2\sigma_{\Delta_y}),\\tilde{y}-(\Delta_y+2\sigma_{\Delta_y})]$', fontsize=15,
+ax.text(0.6, 2.7, '$k=2$', fontsize=fsize,
         bbox=dict(facecolor='None', edgecolor='r', linestyle='--', linewidth=2))
-ax.text(0.5485, 8.0, '$[\\tilde{y}+(\Delta_y+3\sigma_{\Delta_y}),\\tilde{y}-(\Delta_y+3\sigma_{\Delta_y})]$', fontsize=15,
+ax.text(0.6, 0.7, '$k=3$', fontsize=fsize,
         bbox=dict(facecolor='None', edgecolor='r', linestyle=':', linewidth=2))
 
 #ax.plot(x2,5.*ons,lw=1,'r--')
@@ -83,5 +94,5 @@ plt.ylabel('$\\rho(y)$')
 
 plt.tight_layout()
 
-fig.savefig('cauchy2_v5.eps',format='eps')
+fig.savefig('cauchy2_v6.eps',format='eps')
 plt.show()
