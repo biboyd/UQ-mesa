@@ -405,8 +405,25 @@ class EllipticOptimize(object):
             f -= amat[i,i] * (z[i] - self.center[i])**2
         return f
 
+    def get_inscribed_rectangle(self, amat):
+        # Returns the arrays lo, hi specifying the low and high
+        # boundaries of the rectangle inscribed by the ellipse
+        # specified by the coefficients amat.
+        lo = np.zeros(self.dm)
+        hi = np.zeros(self.dm)
+        halfwidth = np.zeros(self.dm)
+        for i in range(self.dm):
+            halfwidth[i] = 1.0/np.sqrt(amat[i,i])
+        lo = self.center - halfwidth
+        hi = self.center + halfwidth
+        return lo, hi
+
     def get_extrema_mesh(self, amat, npts=1000):
-        x_arr = [np.linspace(ilo, ihi, npts) for ilo, ihi in zip(self.lo, self.hi)]
+        # Create a mesh of points over which to evaluate the
+        # quadratic surface within the ellipse described by the coefficients in amat.
+        # The domain of the mesh should be the rectangle inscribed by the ellipse.
+        alo, ahi = self.get_inscribed_rectangle(amat)
+        x_arr = [np.linspace(ilo, ihi, npts) for ilo, ihi in zip(alo, ahi)]
         x_mesh = np.meshgrid(*x_arr)
         z_arr = np.copy(x_mesh[0])
         z_arr = self.quadfit.quadratic_nd(x_mesh, *self.quadfit.coefficients)
@@ -763,6 +780,7 @@ class QuadraticAnalysis(object):
         self.eopt = None
         self.nmesh = nmesh
         self.analyze()
+        
         self.write_results()
         
     def analyze(self):
