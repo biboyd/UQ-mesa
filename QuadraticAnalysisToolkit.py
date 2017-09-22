@@ -77,6 +77,25 @@ class QuadraticFit(object):
         self.init_cross_indices()
         self.do_quad_fit()
 
+    def __str__(self):
+        # Returns a string with the quadratic fit with coefficients
+        # and 1-sigma errors in a pretty format.
+        pretty = "f(x) = ({} +/- {}) + \n".format(self.get_coefs_const(),
+                                                  self.get_error_const())
+        for i, (ci, dci) in enumerate(zip(self.get_coefs_first(),
+                                          self.get_error_first())):
+            pretty += "       ({} +/- {}) x[{}] + \n".format(ci, dci, i)
+        for k, (ck, dck) in enumerate(zip(self.get_coefs_cross(),
+                                          self.get_error_cross())):
+            i, j = self.get_cross_indices(k)
+            pretty += "       ({} +/- {}) x[{}] * x[{}] + \n".format(ck, dck, i, j)
+        for i, (ci, dci) in enumerate(zip(self.get_coefs_second(),
+                                          self.get_error_second())):
+            pretty += "       ({} +/- {}) x[{}]**2".format(ci, dci, i)
+            if i < self.dm - 1:
+                pretty += " + \n"
+        return pretty
+
     def writelog(self, file_handle):
         # Write a log of the quadratic fit to the file_handle
         file_handle.write('# QUADRATIC FIT LOG\n')
@@ -140,6 +159,9 @@ class QuadraticFit(object):
             coefficients = self.coefficients
         return coefficients[0]
 
+    def get_error_const(self):
+        return self.get_coefs_const(self.std_error)
+
     def get_coefs_first(self, coefficients=[]):
         # Given a vector of coefficients,
         # return the vector of coefficients of
@@ -147,6 +169,9 @@ class QuadraticFit(object):
         if len(coefficients)==0:            
             coefficients = self.coefficients
         return coefficients[1:self.dm+1]
+
+    def get_error_first(self):
+        return self.get_coefs_first(self.std_error)
 
     def get_coefs_cross(self, coefficients=[]):
         # Given a vector of coefficients,
@@ -157,6 +182,9 @@ class QuadraticFit(object):
         ncross = int(floor(factorial(self.dm)/2))
         return coefficients[self.dm+1:self.dm+1+ncross]
 
+    def get_error_cross(self):
+        return self.get_coefs_cross(self.std_error)    
+
     def get_coefs_second(self, coefficients=[]):
         # Given a vector of coefficients,
         # return the vector of coefficients of
@@ -165,6 +193,9 @@ class QuadraticFit(object):
             coefficients = self.coefficients
         ncross = int(floor(factorial(self.dm)/2))
         return coefficients[self.dm+1+ncross:]
+
+    def get_error_second(self):
+        return self.get_coefs_second(self.std_error)    
 
     def quadratic_nd(self, z, *coefs):
         f = self.get_coefs_const(coefs)
@@ -288,6 +319,14 @@ class EllipticOptimize(object):
         osuccess = osuccess and osuccess2 and osuccess3
             
         self.success = isuccess and osuccess
+
+    def __str__(self):
+        pretty = ""
+        pretty += 'Inner Bounds: [{}, {}]\n'.format(self.inner_min, self.inner_max)
+        pretty += 'Inner Bounds: [{}, {}] (Mesh)\n'.format(self.mesh_inner_min, self.mesh_inner_max)
+        pretty += 'Outer Bounds: [{}, {}]\n'.format(self.outer_min, self.outer_max)
+        pretty += 'Outer Bounds: [{}, {}] (Mesh)'.format(self.mesh_outer_min, self.mesh_outer_max)
+        return pretty
 
     def writelog(self, file_handle):
         # Given a file_handle, write a log of the Elliptic Optimization
