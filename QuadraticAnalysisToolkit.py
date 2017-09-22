@@ -76,6 +76,9 @@ class QuadraticFit(object):
         self.cross_indices = []
         self.init_cross_indices()
         self.do_quad_fit()
+        self.sum_squared_residuals = None
+        self.coefficient_determination = None
+        self.compute_fit_statistics()
 
     def __str__(self):
         # Returns a string with the quadratic fit with coefficients
@@ -94,6 +97,9 @@ class QuadraticFit(object):
             pretty += "       ({} +/- {}) x[{}]**2".format(ci, dci, i)
             if i < self.dm - 1:
                 pretty += " + \n"
+        pretty += "\n\n"
+        pretty += "Sum of squares of residuals: {}\n".format(self.sum_squared_residuals)
+        pretty += "Coefficient of determination (R^2): {}".format(self.coefficient_determination)
         return pretty
 
     def writelog(self, file_handle):
@@ -212,6 +218,16 @@ class QuadraticFit(object):
         for ci, zi in zip(csecond, z):
             f += ci * zi**2
         return f
+
+    def compute_fit_statistics(self):
+        # Obtain fitting statistics like the sum of squares of residuals
+        # and the coefficient of determination
+        residuals = [p.v - self.quadratic_nd(p.r, *self.coefficients) for p in self.grid.points]
+        residuals = np.array(residuals)
+        data_mean  = np.mean(self.grid.values)
+        sum_squared_data = np.sum((self.grid.values - data_mean)**2)
+        self.sum_squared_residuals = np.sum(residuals**2)
+        self.coefficient_determination = 1.0 - self.sum_squared_residuals/sum_squared_data
 
     def do_quad_fit(self):
         self.coefficients, self.covariance = curve_fit(self.quadratic_nd,
