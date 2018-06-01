@@ -5,6 +5,7 @@ import numpy as np
 from math import factorial, floor
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit, minimize, brentq
+import random
 
 class Point(object):
     def __init__(self, r=[], v=None):
@@ -235,6 +236,108 @@ class QuadraticFit(object):
                                                        self.grid.values,
                                                        p0=np.ones(self.ncoefs))
         self.std_error = np.sqrt(np.diag(self.covariance))
+
+class RectangularOptimize(object):
+    def __init__(self, quadfit, lo, hi, npts=20, fail_threshold=10, verbose=False):
+        # Given a QuadraticFit object, optimize the quadratic function
+        # over the rectangular region [lo, hi].
+        # This is inspired by sample code from Doug Swesty.
+        
+        self.quadfit = quadfit
+        self.dm      = quadfit.dm
+        self.lo      = np.array(lo)
+        self.hi      = np.array(hi)
+        self.dr      = self.hi - self.lo
+        self.center  = 0.5 * (self.hi + self.lo)
+        self.verbose = verbose
+        self.min_function, self.min_location, self.max_function, self.max_location = self.analyze(npts=npts,
+                                                                                                  fail_threshold=fail_threshold)
+
+    def __str__(self):
+        pretty = 'Rectangular Bounds: [{}, {}]\n'.format(self.min_function, self.max_function)
+        return pretty
+
+    def do_optimize(self, start_guess=[]):
+        # Optimize the quadratic function using scipy.optimize
+        # and the 'L-BFGS-B' method
+        method = 'L-BFGS-B'
+        ztol = 1.0e-9
+
+        # Use the array passed as the starting guess
+        # for the optimization. If no array is passed
+        # then generate a random sample in the rectangular domain.
+        if list(start_guess):
+            guess = np.array(start_guess)
+        else:
+            guess = np.array([random.uniform(xlo, xhi) for xlo, xhi in zip(self.lo, self.hi)])
+
+        # Rectangular domain bounds for optimization
+        bounds = [[xlo, xhi] for xlo, xhi in zip(self.lo, self.hi)]
+
+        # Get minimum of quadratic function
+        minopt = minimize(lambda x: self.quadfit.quadratic_nd(x, *self.quadfit.coefficients),
+                          guess, method=method, bounds=bounds, tol=ztol)
+
+        fmin = minopt['fun']
+        xmin = minopt['x']
+        success_min = minopt['success']
+        assert(success_min)
+        
+        # Get maximum of quadratic function
+        maxopt = minimize(lambda x: -self.quadfit.quadratic_nd(x, *self.quadfit.coefficients),
+                          guess, method=method, bounds=bounds, tol=ztol)
+
+        fmax = -maxopt['fun']
+        xmax = maxopt['x']
+        success_max = maxopt['success']
+        assert(success_max)
+
+        return fmin, xmin, fmax, xmax
+
+    def analyze(self, npts=20, fail_threshold=10):
+        # Sample the rectangle multiple times to get starting
+        # values for optimization. This avoids the optimization
+        # "getting stuck" especially at edges (thanks to Doug).
+        #
+        # npts is the number of initial points to sample for do_optimize().
+
+        min_function = None
+        min_location = None
+        max_function = None
+        max_location = None
+
+        nfailed = 0
+        nsuccess = 0
+
+        while(nsuccess < npts and nfailed < fail_threshold):
+            try:
+                fmin, xmin, fmax, xmax = self.do_optimize()
+            except AssertionError:
+                nfailed += 1
+                pass
+            else:
+                if nsuccess == 0:
+                    min_function = fmin
+                    min_location = xmin
+                    max_function = fmax
+                    max_location = xmax
+                else:
+                    if fmin < min_function:
+                        min_function = fmin
+                        min_location = xmin
+                    if fmax > max_function:
+                        max_function = fmax
+                        max_location = xmax
+                nsuccess += 1
+
+        if nsuccess == npts:
+            self.success = True
+            if self.verbose:
+                print('Rectangular optimization succeeded with {} successful samples and {} failures'.format(nsuccess, nfailed))
+        else:
+            self.success = False
+            print('Rectangular Optimization failed - you may try increasing fail_threshold')
+        return min_function, min_location, max_function, max_location
 
 class EllipticOptimize(object):
     def __init__(self, quadfit, lo, hi, nmesh=False, verbose=False):
@@ -825,25 +928,48 @@ class EllipticOptimize(object):
         return fmin, fmax, xmin, xmax, success
 
 class QuadraticAnalysis(object):    
-    def __init__(self, grid, lo, hi, nmesh=None, ofile=None, verbose=False):
+    def __init__(self, grid, lo, hi, method='elliptical',
+                 nmesh=None, npts=20, fail_threshold=10,
+                 ofile=None, verbose=False):
+
+        # Common parameters
         self.grid = grid
         self.lo = lo
         self.hi = hi
         self.verbose = verbose
         self.outputfile = ofile
         self.qfit = None
+        self.method = method
+        self.success = False
+
+        # Ellipse optimization
         self.eopt = None
         self.nmesh = nmesh
-        self.analyze()
-        
+
+        # Scipy optimization on rectangular domain
+        self.ropt = None 
+        self.npts = npts
+        self.fail_threshold = fail_threshold
+
+        # Do the analysis
+        self.success = self.analyze(self.method)
         self.write_results()
         
-    def analyze(self):
-        # Do the quadratic fit and elliptic optimization
+    def analyze(self, method='elliptical'):
+        # Do the quadratic fit and either elliptical or rectangular optimization
         self.qfit = QuadraticFit(self.grid)
-        self.eopt = EllipticOptimize(self.qfit, self.lo, self.hi,
-                                     nmesh=self.nmesh,
-                                     verbose=self.verbose)
+        if method.lower().strip() == 'elliptical':
+            self.eopt = EllipticOptimize(self.qfit, self.lo, self.hi,
+                                         nmesh=self.nmesh,
+                                         verbose=self.verbose)
+            return self.eopt.success
+        elif method.lower().strip() == 'rectangular':
+            self.ropt = RectangularOptimize(self.qfit, self.lo, self.hi,
+                                            npts=self.npts, fail_threshold=self.fail_threshold,
+                                            verbose=self.verbose)
+            return self.ropt.success
+        else:
+            sys.exit('Received unknown analysis method: {}'.format(method))
 
     def write_results(self):
         if self.outputfile:
