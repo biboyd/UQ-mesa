@@ -26,7 +26,12 @@ class Grid(object):
             self.getCoords()
             self.getValues()
 
-    def initFromTXT(self, fname, delimiter=',', skip_header=1, dim=2):
+    def initFromCSV(self, fname, delimiter=',', skip_header=1, dim=2):
+        # effectively an alias for initFromTXT but delimited by commas
+        # instead of spaces.
+        self.initFromTXT(fname, delimiter=delimiter, skip_header=skip_header, dim=dim)
+
+    def initFromTXT(self, fname, delimiter=' ', skip_header=1, dim=2):
         # Given the name (fname) of a txt file
         # containing a series of entries x1, x2, ..., xn, v
         # with skip_header lines of header,
