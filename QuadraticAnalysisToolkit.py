@@ -26,15 +26,22 @@ class Grid(object):
             self.getCoords()
             self.getValues()
 
-    def initFromCSV(self, fname, delimiter=',', skip_header=1):
+    def initFromCSV(self, fname, delimiter=',', skip_header=1, dim=2):
         # Given the name (fname) of a csv file
         # containing a series of entries x1, x2, ..., xn, v
         # with skip_header lines of header,
         # extract the points (1 per line) from the csv
         # and store in the grid.
 
+        # The argument dim specifies the dimensionality of the
+        # independent variables x1, x2, ..., xn. Thus dim=n.
+
+        # Additional columns may follow v, but they will be ignored.
+        # That is:
+        # x1, x2, ..., xn, v, [ignored columns]
+
         # Clear the grid first
-        self.dm = None
+        self.dm = dim
         self.points = []
         self.coords = []
         self.values = []
@@ -47,10 +54,10 @@ class Grid(object):
         # Each element of data is a row from the csv file: create points
         self.points = []
         for row in raw_data:
-            self.points.append(Point(r=row[0:-1], v=row[-1]))
+            self.points.append(Point(r=row[0:dim], v=row[dim]))
 
-        # Set dimensionality, coordinates, and values
-        self.dm = self.points[0].dm
+        # Check dimensionality, set coordinates and values
+        assert(self.dm = self.points[0].dm)
         self.getCoords()
         self.getValues()
         
