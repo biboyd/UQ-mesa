@@ -26,11 +26,11 @@ class Grid(object):
             self.getCoords()
             self.getValues()
 
-    def initFromCSV(self, fname, delimiter=',', skip_header=1, dim=2):
-        # Given the name (fname) of a csv file
+    def initFromTXT(self, fname, delimiter=',', skip_header=1, dim=2):
+        # Given the name (fname) of a txt file
         # containing a series of entries x1, x2, ..., xn, v
         # with skip_header lines of header,
-        # extract the points (1 per line) from the csv
+        # extract the points (1 per line) from the file
         # and store in the grid.
 
         # The argument dim specifies the dimensionality of the
@@ -46,12 +46,12 @@ class Grid(object):
         self.coords = []
         self.values = []
 
-        # Open csv and read points
+        # Open file and read points
         raw_data = np.genfromtxt(fname, delimiter=delimiter, skip_header=skip_header)
         if len(raw_data)==0:
-            sys.exit('ERROR: tried to open csv with no data.')
+            sys.exit('ERROR: tried to open file with no data.')
         
-        # Each element of data is a row from the csv file: create points
+        # Each element of data is a row from the file file: create points
         self.points = []
         for row in raw_data:
             self.points.append(Point(r=row[0:dim], v=row[dim]))
