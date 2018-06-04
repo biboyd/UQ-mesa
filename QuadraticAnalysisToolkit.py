@@ -62,7 +62,7 @@ class Grid(object):
             self.points.append(Point(r=row[0:dim], v=row[dim]))
 
         # Check dimensionality, set coordinates and values
-        assert(self.dm = self.points[0].dm)
+        assert(self.dm == self.points[0].dm)
         self.getCoords()
         self.getValues()
         
