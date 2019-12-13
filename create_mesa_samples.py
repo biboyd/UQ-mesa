@@ -46,12 +46,13 @@ def get_evenly_spaced_grid(lo, hi):
     # hi = xhi_0, xhi_1
 
     NperDim = int(np.power(args.number_samples, 1.0/Npar))
-    print("For evenly spaced grid, using {} samples per dimension.")
+    print("For evenly spaced grid, using {} samples per dimension.".format(NperDim))
     axes_samples = []
-    for i in Npar:
-        axes_samples.append(np.linspace(args.domain_lo[i], args.domain_hi[i], num=NperDim))
+    for i in range(Npar):
+        x = np.linspace(args.domain_lo[i], args.domain_hi[i], num=NperDim)
+        axes_samples.append(x)
 
-    x_ik = np.meshgrid(*axes_samples)
+    x_ik = np.array(np.meshgrid(*axes_samples)).reshape(Npar, -1)
     return x_ik
 
 def get_uniform_random_samples(lo, hi):
@@ -124,34 +125,33 @@ def write_samples(x, label):
     template = args.template_directory # 'prems_to_wd_template'
     main_list = args.template_inlist # 'inlist_template'
 
+    summary_file = 'sample_summary_{}.txt'.format(label)
+    with open(summary_file,'w') as b:
+        b.write("{} Samples:\n".format(label))
+        b.write('-----------------------------------------\n')
+
     for i in range(args.number_samples):
         name = 'c'+str(i)
-        rx = str(x_ik[0,i])
-        bx = str(x_ik[1,i])
+        rx = str(x[0,i])
+        bx = str(x[1,i])
 
-        # Copy templates and create directory called c#
-        shutil.copytree(template,os.path.join(args.suite_name, name))
-        shutil.copy(main_list,os.path.join(fpath, name, '.'))
-        os.chdir(os.path.join(fpath, name))
+        # Copy templates and create directory
+        working_dir = os.path.join(fpath, name)
+        shutil.rmtree(working_dir, ignore_errors=True)
+        shutil.copytree(template, working_dir)
+        shutil.copy(main_list, working_dir)
+        os.chdir(working_dir)
 
         # Change Values in inlist
         ChangeValue(main_list,'CHANGE_R','Reimers_scaling_factor',rx)
         ChangeValue('CHANGE_R','inlist_1.0','Blocker_scaling_factor',bx)
 
-        templ = open('batch_cmd.sh','r')
-        cluster = open('cluster.sh','r')
-        runfile = open('run_script','a')
-
         os.system('rm inlist_template')
         os.system('rm CHANGE_R')
 
-        templ.close()
-        runfile.close()
-
-        print(os.getcwd())
         os.chdir(root_dir)
 
-        with open('sample_summary_{}.txt'.format(label),'w') as b:
+        with open('sample_summary_{}.txt'.format(label),'a') as b:
             b.write('Folder name: '+name+'\n')
             b.write('Reimers: '+str(rx)+'\n')
             b.write('Blocker: '+str(bx)+'\n')
@@ -167,7 +167,7 @@ if __name__=="__main__":
         x_ik = get_evenly_spaced_grid(args.domain_lo, args.domain_hi)
         print("Creating evenly spaced grid run directories ...")
         write_samples(x_ik, "evenly_spaced")
-        print("Created evenly spaced grid run directories.")
+        print("Created evenly spaced grid run directories.\n")
 
     if args.uniform_random:
         # generate uniform random samples
@@ -175,7 +175,7 @@ if __name__=="__main__":
         x_ik = get_uniform_random_samples(args.domain_lo, args.domain_hi)
         print("Creating uniform random samples run directories ...")
         write_samples(x_ik, "uniform_random")
-        print("Created uniform random samples run directories.")
+        print("Created uniform random samples run directories.\n")
 
     if args.cauchy_random:
         # generate Cauchy random samples
@@ -183,4 +183,4 @@ if __name__=="__main__":
         x_ik = get_cauchy_samples(args.domain_lo, args.domain_hi)
         print("Creating Cauchy random samples run directories ...")
         write_samples(x_ik, "cauchy")
-        print("Created Cauchy random samples run directories.")
+        print("Created Cauchy random samples run directories.\n")
