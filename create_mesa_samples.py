@@ -164,6 +164,7 @@ def sanity_check_inputs():
 
 
 def plot_sampling(Npar, x, label):
+    fpath = os.path.join(os.getcwd(), args.suite_name, label)
     parameter_indexes = range(Npar)
     pairs_to_plot = [x for x in combinations(parameter_indexes, 2)]
     for pairs in pairs_to_plot:
@@ -177,7 +178,7 @@ def plot_sampling(Npar, x, label):
         plt.ylabel(args.parameters[ip1])
         plt.tight_layout()
         plotname = "samples-{}-{}-{}.eps".format(label, args.parameters[ip0], args.parameters[ip1])
-        plt.savefig(plotname)
+        plt.savefig(os.path.join(fpath, plotname))
 
 
 if __name__=="__main__":
