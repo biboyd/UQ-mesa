@@ -13,6 +13,8 @@ import random
 import os, shutil, re
 import math
 import argparse
+from itertools import combinations
+import matplotlib.pyplot as plt
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-name", "--suite_name", type=str, required=True, help="Name of this suite of runs.")
@@ -161,6 +163,23 @@ def sanity_check_inputs():
     assert(len(args.domain_lo) == len(args.domain_hi))
 
 
+def plot_sampling(Npar, x, label):
+    parameter_indexes = range(Npar)
+    pairs_to_plot = [x for x in combinations(parameter_indexes, 2)]
+    for pairs in pairs_to_plot:
+        ip0 = pairs[0]
+        ip1 = pairs[1]
+        area = 100
+        color = 'green'
+        plt.clf()
+        plt.scatter(x[ip0,:], x[ip1,:], s=area, c=color, alpha=0.5)
+        plt.xlabel(args.parameters[ip0])
+        plt.ylabel(args.parameters[ip1])
+        plt.tight_layout()
+        plotname = "samples_{}_{}_{}.eps".format(label, args.parameters[ip0], args.parameters[ip1])
+        plt.savefig(plotname)
+
+
 if __name__=="__main__":
     sanity_check_inputs()
 
@@ -173,7 +192,9 @@ if __name__=="__main__":
         x_ik = get_evenly_spaced_grid(number_parameters, args.domain_lo, args.domain_hi)
         print("Creating evenly spaced grid run directories ...")
         write_samples(number_parameters, x_ik, "evenly_spaced")
-        print("Created evenly spaced grid run directories.\n")
+        print("Plotting evenly spaced sampling ...")
+        plot_sampling(number_parameters, x_ik, "evenly_spaced")
+        print("Finished creating evenly spaced grid.\n")
 
     if args.uniform_random:
         # generate uniform random samples
@@ -181,7 +202,9 @@ if __name__=="__main__":
         x_ik = get_uniform_random_samples(number_parameters, args.domain_lo, args.domain_hi)
         print("Creating uniform random samples run directories ...")
         write_samples(number_parameters, x_ik, "uniform_random")
-        print("Created uniform random samples run directories.\n")
+        print("Plotting uniform random sampling ...")
+        plot_sampling(number_parameters, x_ik, "uniform_random")
+        print("Finished creating uniform random grid.\n")
 
     if args.cauchy_random:
         # generate Cauchy random samples
@@ -189,4 +212,6 @@ if __name__=="__main__":
         x_ik = get_cauchy_samples(number_parameters, args.domain_lo, args.domain_hi)
         print("Creating Cauchy random samples run directories ...")
         write_samples(number_parameters, x_ik, "cauchy")
-        print("Created Cauchy random samples run directories.\n")
+        print("Plotting cauchy sampling ...")
+        plot_sampling(number_parameters, x_ik, "cauchy")
+        print("Finished creating cauchy grid.\n")
