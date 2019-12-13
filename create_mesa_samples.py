@@ -22,28 +22,33 @@ parser.add_argument("-n", "--number_samples", type=int, required=True, help="Num
 parser.add_argument("-u", "--uniform_random", action="store_true", help="Do uniform random sampling.")
 parser.add_argument("-c", "--cauchy_random", action="store_true", help="Do Cauchy random sampling.")
 parser.add_argument("-e", "--evenly_spaced", action="store_true", help="Do evenly spaced grid sampling.")
+parser.add_argument("-p", "--parameters", type=str, nargs=2, required=True, help="Names of inlist parameters corresponding to each dimension.")
 parser.add_argument("-lo", "--domain_lo", type=float, nargs=2, required=True, help="Domain lower bounds in each dimension: [xlo_0, xlo_1]")
 parser.add_argument("-hi", "--domain_hi", type=float, nargs=2, required=True, help="Domain upper bounds in each dimension: [xhi_0, xhi_1]")
 args = parser.parse_args()
 
-# hardcode to use 2 parameters for now
-Npar = 2
 
+def ChangeValue(inlist,param,newval):
+    # Changes parameter param value to newval
+    # in-place in the file inlist.
+    lines = []
+    fin = open(inlist, "r")
+    for line in fin:
+        lines.append(line)
+    fin.close()
 
-def ChangeValue(inlist,newinl,param,newval):
-    with open(inlist) as f:
-        q = open(newinl,'a')
-        for line in f:
-            l = line
-            if param in l:
-                q.write('      '+param+' = '+str(newval)+'\n')
-            if not param in l:
-                q.write(l)
+    fout = open(inlist, "w")
+    for line in lines:
+        if param in line:
+            fout.write('      '+param+' = '+str(newval)+'\n')
+        else:
+            fout.write(line)
+    fout.close()
 
-def get_evenly_spaced_grid(lo, hi):
-    # For variables x_0 and x_1, args are lo and hi vectors
-    # lo = xlo_0, xlo_1
-    # hi = xhi_0, xhi_1
+def get_evenly_spaced_grid(Npar, lo, hi):
+    # For variables x_0, x_1, ... the arguments are lo and hi vectors
+    # lo = xlo_0, xlo_1, ...
+    # hi = xhi_0, xhi_1, ...
 
     NperDim = int(np.power(args.number_samples, 1.0/Npar))
     print("For evenly spaced grid, using {} samples per dimension.".format(NperDim))
@@ -55,10 +60,10 @@ def get_evenly_spaced_grid(lo, hi):
     x_ik = np.array(np.meshgrid(*axes_samples)).reshape(Npar, -1)
     return x_ik
 
-def get_uniform_random_samples(lo, hi):
-    # For variables x_0 and x_1, args are lo and hi vectors
-    # lo = xlo_0, xlo_1
-    # hi = xhi_0, xhi_1
+def get_uniform_random_samples(Npar, lo, hi):
+    # For variables x_0, x_1, ... the arguments are lo and hi vectors
+    # lo = xlo_0, xlo_1, ...
+    # hi = xhi_0, xhi_1, ...
 
     x_ik = np.zeros( (Npar, args.number_samples) )
     for i in range(Npar):
@@ -66,40 +71,36 @@ def get_uniform_random_samples(lo, hi):
     return x_ik
 
 
-def get_cauchy_samples(lo, hi):
-    # For variables x_0 and x_1, args are lo and hi vectors
-    # lo = xlo_0, xlo_1
-    # hi = xhi_0, xhi_1
+def get_cauchy_samples(Npar, lo, hi):
+    # For variables x_0, x_1, ... the arguments are lo and hi vectors
+    # lo = xlo_0, xlo_1, ...
+    # hi = xhi_0, xhi_1, ...
 
     # Calculate Cauchy distributed variables, see FK 2004 for algorithm
     # Number of experiments is args.number_samples
-    n_inp = 2 # number of inputs
 
-    x_lim = np.zeros( (n_inp, 2) )
-    x_lim[0,:] = [lo[0], hi[0]]
-    x_lim[1,:] = [lo[1], hi[1]]
+    x_lim = np.zeros( (Npar, 2) )
+    for ip in range(Npar):
+        x_lim[ip,:] = [lo[ip], hi[ip]]
 
     # Initialize arrays
-    x = np.zeros( (n_inp, 2) )
+    r_ik = np.zeros( (Npar, args.number_samples) )
+    c_ik = np.zeros( (Npar, args.number_samples) )
+    d_ik = np.zeros( (Npar, args.number_samples) )
+    x_ik = np.zeros( (Npar, args.number_samples) )
 
-    r_ik = np.zeros( (n_inp, args.number_samples) )
-    c_ik = np.zeros( (n_inp, args.number_samples) )
-    d_ik = np.zeros( (n_inp, args.number_samples) )
-    x_ik = np.zeros( (n_inp, args.number_samples) )
+    delta = np.zeros( (Npar) )     # this is the interval half-width
+    xtilde_ik = np.zeros( (Npar) ) # this is the interval midpoint
 
-    delta = np.zeros( (n_inp) ) # this is the interval half-width
-
-    delta[0] = ( (x_lim[0,1] - x_lim[0,0]) / 2.0 )
-    delta[1] = ( (x_lim[1,1] - x_lim[1,0]) / 2.0 )
-
-    xtilde_ik = ( x_lim[:,1] + x_lim[:,0] )/ 2.0  # This is the midpoint
+    for ip in range(Npar):
+        delta[ip] = (hi[ip] - lo[ip]) / 2.0
+        xtilde_ik[ip] = (hi[ip] + lo[ip]) / 2.0
 
     Kvals = []
 
+    # Calculate Cauchy samples
     for k in range(args.number_samples):
-
-        for i in range(n_inp):
-
+        for i in range(Npar):
             r_ik[i,k] = random.uniform(0.0,1.0)
 
         c_ik[:,k] = np.tan( math.pi * (r_ik[:,k] - 0.5) )
@@ -111,12 +112,14 @@ def get_cauchy_samples(lo, hi):
         d_ik[:,k] = ( delta[:] * c_ik[:,k] ) / K
 
         x_ik[:,k] = xtilde_ik[:] + d_ik[:,k]
+
     return x_ik
 
 
-def write_samples(x, label):
+def write_samples(Npar, x, label):
     # given random samples in x, create the run directories
     # with x a numpy array of shape (Npar, args.number_samples)
+    # Npar is the number of parameters
 
     root_dir = os.getcwd()
     fpath = os.path.join(root_dir, args.suite_name, label)
@@ -132,8 +135,6 @@ def write_samples(x, label):
 
     for i in range(args.number_samples):
         name = 'c'+str(i)
-        rx = str(x[0,i])
-        bx = str(x[1,i])
 
         # Copy templates and create directory
         working_dir = os.path.join(fpath, name)
@@ -142,45 +143,50 @@ def write_samples(x, label):
         shutil.copy(main_list, working_dir)
         os.chdir(working_dir)
 
-        # Change Values in inlist
-        ChangeValue(main_list,'CHANGE_R','Reimers_scaling_factor',rx)
-        ChangeValue('CHANGE_R','inlist_1.0','Blocker_scaling_factor',bx)
-
-        os.system('rm inlist_template')
-        os.system('rm CHANGE_R')
+        # Change parameter values in inlist
+        for ip in range(Npar):
+            ChangeValue(main_list, args.parameters[ip], x[ip,i])
 
         os.chdir(root_dir)
 
         with open('sample_summary_{}.txt'.format(label),'a') as b:
             b.write('Folder name: '+name+'\n')
-            b.write('Reimers: '+str(rx)+'\n')
-            b.write('Blocker: '+str(bx)+'\n')
+            for ip in range(Npar):
+                b.write('{}: '.format(args.parameters[ip])+str(x[ip,i])+'\n')
             b.write('-----------------------------------------\n')
 
 
+def sanity_check_inputs():
+    assert(len(args.parameters) == len(args.domain_lo))
+    assert(len(args.domain_lo) == len(args.domain_hi))
+
+
 if __name__=="__main__":
+    sanity_check_inputs()
+
+    number_parameters = len(args.parameters)
     random.seed()
 
     if args.evenly_spaced:
         # generate evenly spaced grid
         print("Getting evenly spaced grid ...")
-        x_ik = get_evenly_spaced_grid(args.domain_lo, args.domain_hi)
+        x_ik = get_evenly_spaced_grid(number_parameters, args.domain_lo, args.domain_hi)
         print("Creating evenly spaced grid run directories ...")
-        write_samples(x_ik, "evenly_spaced")
+        write_samples(number_parameters, x_ik, "evenly_spaced")
         print("Created evenly spaced grid run directories.\n")
 
     if args.uniform_random:
         # generate uniform random samples
         print("Getting uniform random samples ...")
-        x_ik = get_uniform_random_samples(args.domain_lo, args.domain_hi)
+        x_ik = get_uniform_random_samples(number_parameters, args.domain_lo, args.domain_hi)
         print("Creating uniform random samples run directories ...")
-        write_samples(x_ik, "uniform_random")
+        write_samples(number_parameters, x_ik, "uniform_random")
         print("Created uniform random samples run directories.\n")
 
     if args.cauchy_random:
         # generate Cauchy random samples
         print("Getting Cauchy random samples ...")
-        x_ik = get_cauchy_samples(args.domain_lo, args.domain_hi)
+        x_ik = get_cauchy_samples(number_parameters, args.domain_lo, args.domain_hi)
         print("Creating Cauchy random samples run directories ...")
-        write_samples(x_ik, "cauchy")
+        write_samples(number_parameters, x_ik, "cauchy")
         print("Created Cauchy random samples run directories.\n")
