@@ -21,6 +21,7 @@ parser.add_argument("-tinlist", "--template_inlist", type=str, required=True, he
 parser.add_argument("-n", "--number_samples", type=int, required=True, help="Number of samples to create.")
 parser.add_argument("-u", "--uniform_random", action="store_true", help="Do uniform random sampling.")
 parser.add_argument("-c", "--cauchy_random", action="store_true", help="Do Cauchy random sampling.")
+parser.add_argument("-e", "--evenly_spaced", action="store_true", help="Do evenly spaced grid sampling.")
 parser.add_argument("-lo", "--domain_lo", type=float, nargs=2, required=True, help="Domain lower bounds in each dimension: [xlo_0, xlo_1]")
 parser.add_argument("-hi", "--domain_hi", type=float, nargs=2, required=True, help="Domain upper bounds in each dimension: [xhi_0, xhi_1]")
 args = parser.parse_args()
@@ -39,6 +40,19 @@ def ChangeValue(inlist,newinl,param,newval):
             if not param in l:
                 q.write(l)
 
+def get_evenly_spaced_grid(lo, hi):
+    # For variables x_0 and x_1, args are lo and hi vectors
+    # lo = xlo_0, xlo_1
+    # hi = xhi_0, xhi_1
+
+    NperDim = int(np.power(args.number_samples, 1.0/Npar))
+    print("For evenly spaced grid, using {} samples per dimension.")
+    axes_samples = []
+    for i in Npar:
+        axes_samples.append(np.linspace(args.domain_lo[i], args.domain_hi[i], num=NperDim))
+
+    x_ik = np.meshgrid(*axes_samples)
+    return x_ik
 
 def get_uniform_random_samples(lo, hi):
     # For variables x_0 and x_1, args are lo and hi vectors
@@ -146,6 +160,14 @@ def write_samples(x, label):
 
 if __name__=="__main__":
     random.seed()
+
+    if args.evenly_spaced:
+        # generate evenly spaced grid
+        print("Getting evenly spaced grid ...")
+        x_ik = get_evenly_spaced_grid(args.domain_lo, args.domain_hi)
+        print("Creating evenly spaced grid run directories ...")
+        write_samples(x_ik, "evenly_spaced")
+        print("Created evenly spaced grid run directories.")
 
     if args.uniform_random:
         # generate uniform random samples
