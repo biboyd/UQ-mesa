@@ -176,7 +176,7 @@ def plot_sampling(Npar, x, label):
         plt.xlabel(args.parameters[ip0])
         plt.ylabel(args.parameters[ip1])
         plt.tight_layout()
-        plotname = "samples_{}_{}_{}.eps".format(label, args.parameters[ip0], args.parameters[ip1])
+        plotname = "samples-{}-{}-{}.eps".format(label, args.parameters[ip0], args.parameters[ip1])
         plt.savefig(plotname)
 
 
