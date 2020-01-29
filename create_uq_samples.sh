@@ -1,1 +1,1 @@
-python3 create_mesa_samples.py -name test_samples -tdir template_directory -tinlist inlist_1.0 -n 256 -u -c -e -lo 0.3 0.01 -hi 0.9 0.1 -p Reimers_scaling_factor Blocker_scaling_factor
+python3 create_mesa_samples.py -name uq_wind_samples -tdir 1M_pre_ms_to_wd_r12115_Template -tinlist 1M_pre_ms_to_wd_r12115_Template/inlist_start 1M_pre_ms_to_wd_r12115_Template/inlist_to_end_agb 1M_pre_ms_to_wd_r12115_Template/inlist_to_wd -n 256 -u -c -e -lo 0.3 0.01 -hi 0.9 0.1 -p Reimers_scaling_factor Blocker_scaling_factor --utils run_utils
