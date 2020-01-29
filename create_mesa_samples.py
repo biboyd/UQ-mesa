@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 parser = argparse.ArgumentParser()
 parser.add_argument("-name", "--suite_name", type=str, required=True, help="Name of this suite of runs.")
 parser.add_argument("-tdir", "--template_directory", type=str, required=True, help="Name of template directory for running MESA.")
-parser.add_argument("-tinlist", "--template_inlist", type=str, required=True, help="Name of template inlist to use for MESA.")
+parser.add_argument("-tinlists", "--template_inlists", type=str, required=True, nargs="+", help="Name of 1 or more template inlists for MESA where parameters are to be changed.")
 parser.add_argument("-n", "--number_samples", type=int, required=True, help="Number of samples to create.")
 parser.add_argument("-u", "--uniform_random", action="store_true", help="Do uniform random sampling.")
 parser.add_argument("-c", "--cauchy_random", action="store_true", help="Do Cauchy random sampling.")
@@ -27,6 +27,7 @@ parser.add_argument("-e", "--evenly_spaced", action="store_true", help="Do evenl
 parser.add_argument("-p", "--parameters", type=str, nargs=2, required=True, help="Names of inlist parameters corresponding to each dimension.")
 parser.add_argument("-lo", "--domain_lo", type=float, nargs=2, required=True, help="Domain lower bounds in each dimension: [xlo_0, xlo_1]")
 parser.add_argument("-hi", "--domain_hi", type=float, nargs=2, required=True, help="Domain upper bounds in each dimension: [xhi_0, xhi_1]")
+parser.add_argument("-utils", "--utils", type=str, help="Path to utilities for running a set of samples, to be copied to each run directory.")
 args = parser.parse_args()
 
 
@@ -128,7 +129,7 @@ def write_samples(Npar, x, label):
 
     # These are the template files that will be copied and made into the series of directories
     template = args.template_directory # 'prems_to_wd_template'
-    main_list = args.template_inlist # 'inlist_template'
+    mesa_inlists = [os.path.join(root_dir, inlist) for inlist in args.template_inlists] # 'inlist_template'
 
     summary_file = 'sample_summary_{}.txt'.format(label)
     with open(summary_file,'w') as b:
@@ -142,12 +143,14 @@ def write_samples(Npar, x, label):
         working_dir = os.path.join(fpath, name)
         shutil.rmtree(working_dir, ignore_errors=True)
         shutil.copytree(template, working_dir)
-        shutil.copy(main_list, working_dir)
+        for inlist in mesa_inlists:
+            shutil.copy(inlist, working_dir)
         os.chdir(working_dir)
 
         # Change parameter values in inlist
-        for ip in range(Npar):
-            ChangeValue(main_list, args.parameters[ip], x[ip,i])
+        for inlist in mesa_inlists:
+            for ip in range(Npar):
+                ChangeValue(inlist, args.parameters[ip], x[ip,i])
 
         os.chdir(root_dir)
 
@@ -180,6 +183,9 @@ def plot_sampling(Npar, x, label):
         plotname = "samples-{}-{}-{}.eps".format(label, args.parameters[ip0], args.parameters[ip1])
         plt.savefig(os.path.join(fpath, plotname))
 
+def copy_run_utils(label):
+    fpath = os.path.join(os.getcwd(), args.suite_name, label)
+    shutil.copytree(args.utils, os.path.join(fpath, args.utils))
 
 if __name__=="__main__":
     sanity_check_inputs()
@@ -195,6 +201,9 @@ if __name__=="__main__":
         write_samples(number_parameters, x_ik, "evenly_spaced")
         print("Plotting evenly spaced sampling ...")
         plot_sampling(number_parameters, x_ik, "evenly_spaced")
+        if args.utils:
+            print("Copying run utilities ...")
+            copy_run_utils("evenly_spaced")
         print("Finished creating evenly spaced grid.\n")
 
     if args.uniform_random:
@@ -205,6 +214,9 @@ if __name__=="__main__":
         write_samples(number_parameters, x_ik, "uniform_random")
         print("Plotting uniform random sampling ...")
         plot_sampling(number_parameters, x_ik, "uniform_random")
+        if args.utils:
+            print("Copying run utilities ...")
+            copy_run_utils("uniform_random")
         print("Finished creating uniform random grid.\n")
 
     if args.cauchy_random:
@@ -215,4 +227,7 @@ if __name__=="__main__":
         write_samples(number_parameters, x_ik, "cauchy")
         print("Plotting cauchy sampling ...")
         plot_sampling(number_parameters, x_ik, "cauchy")
+        if args.utils:
+            print("Copying run utilities ...")
+            copy_run_utils("cauchy")
         print("Finished creating cauchy grid.\n")
