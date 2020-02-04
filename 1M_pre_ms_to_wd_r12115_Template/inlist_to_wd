@@ -34,7 +34,7 @@
       ! check for retries and backups as part of test_suite
          max_number_backups = 2000
          max_number_retries = 3000
-         max_model_number = 7000
+         max_model_number = 1000000
 
       initial_mass = 1.0
       initial_z = 0.02d0

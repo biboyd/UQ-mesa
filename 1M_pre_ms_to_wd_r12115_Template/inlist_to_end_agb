@@ -56,7 +56,7 @@
       ! check for retries and backups as part of test_suite
          max_number_backups = 1000
          max_number_retries = 1600
-         max_model_number = 6500
+         max_model_number = 1000000
 
       backup_hold = 3
          
