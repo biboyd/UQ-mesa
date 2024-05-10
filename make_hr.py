@@ -3,7 +3,7 @@
 # M. Hoffman March 19 2016
 # Try to make it so you can plot multiple folders or just the one
 
-import mesa as ms
+from nugridpy import mesa as ms
 import numpy as np
 import matplotlib.pyplot as plt
 import os, re, shutil

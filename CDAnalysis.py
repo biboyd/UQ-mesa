@@ -5,7 +5,7 @@
 
 import numpy as np
 import os, re, shutil
-import mesa as ms
+from nugridpy import mesa as ms
 
 # The Maximum Likelihood equation, as seen in Ferson and Kreinovich 2004).
 # Moves everything to the left hand side so that if d is correct the function will be 0

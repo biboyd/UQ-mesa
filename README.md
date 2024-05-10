@@ -4,6 +4,8 @@ Uncertainty Quantification (UQ) in Modules and Experiments for Stellar Astrophys
 The scripts, doc, and otherwise found in this repo are related to my UQ study of the stellar evolution code, MESA.
 Some of my analyzing scripts utilise the mesa module for python from NuGridPy (nugridpy.phys.uvic.ca) and should be noted in the comments of the code. If you're interested in this project, you'll also find D. Willcox's work handy [here](https://github.com/dwillcox/nuq)
 
+DEPENDENCY: need to install the NuGridPy python package from [here](https://github.com/NuGrid/NuGridPy)
+
 ## RUNNING:
 
 - RunatInt.py gives the user option to specify whether or not they are running on a cluster, and whether they want random, uniformly distributed input values or Cauchy distributed input values. This script creates run scripts: I ran this on Stony Brook's LIRED, so the cluster scripts are for PBS batch scripts, and for not running on clusters, the script submits at commands. TO DO: Adjust so it only runs x at commands at a time (where x is the number of cores available)

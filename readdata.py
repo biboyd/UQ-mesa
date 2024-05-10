@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 import os, shutil, re
-import mesa as ms
+from nugridpy import mesa as ms
 import numpy as np
 import matplotlib.pyplot as plt
 import datetime
