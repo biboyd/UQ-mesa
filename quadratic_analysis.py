@@ -5,7 +5,21 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+import plotly.graph_objects as go
 
+
+def plot3d_plotly(x, y, z):
+    #setup plotly data
+    mydata = go.Surface(x=x, y=y, z=z, opacity=0.8)
+    #plot
+    fig = go.Figure(data=[mydata])
+    
+    #update labels
+    fig.update_layout(scene=dict(xaxis_title='Block', yaxis_title='Reims', zaxis_title='Solar Mass'),
+                 width=700, height=700,
+                 margin=dict(r=20, l=20, b=20, t=20))
+    
+    return fig
 def read_coeff():
     with open("results.txt", 'r') as f:
         in_multivariate = False
@@ -73,9 +87,9 @@ yc = (y[0] + y[1]) / 2.0
 # Plot the function over the range.
 
 plot_npts = 1000
-x_arr = np.linspace(x[0], x[1], plot_npts)
-y_arr = np.linspace(y[0], y[1], plot_npts)
-x_arr, y_arr = np.meshgrid(x_arr, y_arr)
+x_arr1 = np.linspace(x[0], x[1], plot_npts)
+y_arr1 = np.linspace(y[0], y[1], plot_npts)
+x_arr, y_arr = np.meshgrid(x_arr1, y_arr1)
 z_arr = obj_func_init(x_arr, y_arr)
 fig = plt.figure()
 ax = fig.add_subplot(projection='3d')
@@ -85,8 +99,12 @@ surf = ax.plot_surface(x_arr, y_arr, z_arr)
 ax.view_init(elev = 45, azim = 35)
 plt.savefig('function.png')
 
-# Get a rough estimate of the bounds of the inner elliptical region through sampling.
+# plotly plot
+plotly_fig = plot3d_plotly(x_arr1, y_arr1, z_arr)
+plotly_fig.write_html("function.html")
+plotly_fig.write_image("function_.png")
 
+# Get a rough estimate of the bounds of the inner elliptical region through sampling.
 mask = np.where(( (x_arr - xc) / (dx / 2.0) )**2 + ( (y_arr - yc) / (dy / 2.0) )**2 <= 1.0)
 
 print("Minimum in inner elliptical region is: ", np.min(z_arr[mask]))

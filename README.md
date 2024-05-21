@@ -7,6 +7,7 @@ Some of my analyzing scripts utilise the mesa module for python from NuGridPy (n
 ## DEPENDENCIES: 
 * need to install the NuGridPy python package from [here](https://github.com/NuGrid/NuGridPy)
 * Need to install R to run the regression. On ubuntu that is `apt install r-base-core` will do.
+* Used plotly in some plottings. `pip install plotly`
 
 ## RUNNING:
 
