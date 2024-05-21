@@ -34,19 +34,22 @@ os.chdir(path)
 # Get the final masses from the folders
 #masses = []
 i=0
-for file in sorted(os.listdir(path)):
-    if file == "run_utils" or file == "multitask_.jugdata":
-        pass
-    else:
+for f in sorted(os.listdir(path)):
+    # regex to check if proper directory
+    pattern = re.compile(r"c[0-9]{1,3}")
+
+    # returns None if not a match
+    valid_dir = re.fullmatch(pattern, f)
+
+    if f is not None:
         i+=1
 
-        # Check if it's a directory, if it's a file, we'll ignore it
-        if os.path.isdir(path+'/'+file):
+        # Check if it's a directory, if it's a f, we'll ignore it
+        if os.path.isdir(path+'/'+f):
                 
-            os.chdir(path+'/'+file)
+            os.chdir(path+'/'+f)
             currd = os.getcwd()
             print('Now in directory... '+os.getcwd())
-            #os.system('rm ./LOGS/history.datasa')
             
             try: 
                  s = mr.MesaData('LOGS/history.data')
@@ -54,7 +57,7 @@ for file in sorted(os.listdir(path)):
                  print("Can't fine LOGS/history.data . Will skip")
                  continue
             except:
-                 print("found file but something else messed up")
+                 print("found LOGS/history.data file but something else messed up")
                  continue
       
             lum = s.data('log_L')
@@ -89,7 +92,7 @@ for file in sorted(os.listdir(path)):
                 failr.append(rv)
 
         else:
-            print(file+' is not a folder, ignoring it!')
+            print(f+' is not a folder, ignoring it!')
         
 np.savetxt(f"{outdir}/StarM.out",masses,delimiter=',')
 np.save(f"{outdir}/StarM.npy", masses)
