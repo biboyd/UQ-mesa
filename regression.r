@@ -4,11 +4,9 @@
 # then type
 # $ source(regression.r)
 
-star = read.csv(file="output2.csv")
-
-x = star$Blocker_scaling_factor
-y = star$Reimers_scaling_factor
-z = star$Final_CO_WD_Mass
+x <- unlist(read.delim("Block.out", sep = "\n"))
+y <- unlist(read.delim("Reims.out", sep = "\n"))
+z <- unlist(read.delim("StarM.out", sep = "\n"))
 
 # This is the linear multivariate regression
 r = lm(z~x+y)
