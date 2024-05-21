@@ -78,13 +78,13 @@ plt.savefig('function.png')
 
 mask = np.where(( (x_arr - xc) / (dx / 2.0) )**2 + ( (y_arr - yc) / (dy / 2.0) )**2 <= 1.0)
 
-print "Minimum in inner elliptical region is: ", np.min(z_arr[mask])
-print "Maximum in inner elliptical region is: ", np.max(z_arr[mask])
+print("Minimum in inner elliptical region is: ", np.min(z_arr[mask]))
+print("Maximum in inner elliptical region is: ", np.max(z_arr[mask]))
 
 mask = np.where(( (x_arr - xc) / (dx / np.sqrt(2.0)) )**2 + ( (y_arr - yc) / (dy / np.sqrt(2.0)) )**2 <= 1.0)
 
-print "Minimum in outer elliptical region is: ", np.min(z_arr[mask])
-print "Maximum in outer elliptical region is: ", np.max(z_arr[mask])
+print("Minimum in outer elliptical region is: ", np.min(z_arr[mask]))
+print("Maximum in outer elliptical region is: ", np.max(z_arr[mask]))
 
 #Inner
 #a_ik = np.matrix ( [[1.0/(dx/2.)**2, 0.0], [0.0, 1.0/(dy/2.)**2]] )
@@ -96,16 +96,16 @@ a_ik = np.matrix ( [[1.0/(dx/ np.sqrt(2.0))**2, 0.0], [0.0, 1.0/(dy/ np.sqrt(2.0
 Z = np.linalg.inv(a_ik)
 
 print('The inverse matrix is: ')
-print Z
+print(Z)
 
 # Compute eigenvectors/values
 
 w, v = np.linalg.eig(Z)
 
 print('Eigenvalues of Z are: ')
-print w
+print(w)
 print('Eigenvectors of Z are: ')
-print v
+print(v)
 
 # Coefficients from quadratic fits
 
@@ -156,7 +156,7 @@ for k in range(N):
     lambda_k[k] = 1.0 / w[k]
 
 print('lambda_k: ')
-print lambda_k
+print(lambda_k)
 
 g_k = np.zeros(N)
 
@@ -172,10 +172,10 @@ for k in range(N):
             for i in range(N):
                 g_kl[k,l] += f_ij[i,j] * v[i,k] * v[j,l]
 
-print ('g_k is: ')
-print g_k
-print ('g_kl is: ')
-print g_kl
+print('g_k is: ')
+print(g_k)
+print('g_kl is: ')
+print(g_kl)
 
 g_pk = np.zeros(N)
 for k in range(N): 
@@ -187,16 +187,16 @@ for k in range(N):
         g_pkl[k,l] = g_kl[k,l] / (np.sqrt(lambda_k[k]) * np.sqrt(lambda_k[l]))
 
 print('g_pk is: ')
-print g_pk
+print(g_pk)
 print('g_pkl is: ')
-print g_pkl
+print(g_pkl)
 
 mu, u = np.linalg.eig(g_pkl)
 
 print('Eigenvalues of g\'_kl are: ')
-print mu
-print ('Eigenvectors of g\'_kl are: ')
-print u
+print(mu)
+print('Eigenvectors of g\'_kl are: ')
+print(u)
 
 h_p = np.zeros(N)
 
@@ -209,18 +209,18 @@ t_p = np.zeros(N)
 for k in range(N):
     t_p[k] = -h_p[k] / (2.0 * mu[k])
 
-print "t_p is:"
-print t_p
+print("t_p is:")
+print(t_p)
 
-print "sum of t_p**2 is:"
-print np.sum(t_p**2)
+print("sum of t_p**2 is:")
+print(np.sum(t_p**2))
 
 if (np.sum(t_p**2)) <= 1.0:
-    print ('Extremum found in the interior of the domain.')
+    print('Extremum found in the interior of the domain.')
 else:
     print('Extremum not found in the interior of the domain.')
 
-print "objective function:"
+print("objective function:")
 print(obj_func_final(f_0, h_p, mu, t_p))
 
 def Cond42(a,b,c):
@@ -235,9 +235,9 @@ N_iter_max = 1000000
 N_iter = 1
 
 # Print Values of Cond42 at -100, 0, 100
-print "Cond42 at -100: ", Cond42(h_p, mu, -100.0)
-print "Cond42 at 0: ", Cond42(h_p, mu, 0.0)
-print "Cond42 at 100: ", Cond42(h_p, mu, 100.0)
+print("Cond42 at -100: ", Cond42(h_p, mu, -100.0))
+print("Cond42 at 0: ", Cond42(h_p, mu, 0.0))
+print("Cond42 at 100: ", Cond42(h_p, mu, 100.0))
 
 # Change this range to [-100, 0] (say) to get the other bound
 
@@ -262,24 +262,24 @@ while (N_iter <= N_iter_max):
         N_iter = N_iter + 1
 
         if (N_iter == N_iter_max):
-            print "Result not converged; stopping."
-            exit
+            print("Result not converged; stopping.")
+            exit()
 
-print "Final value of lambda:"
+print("Final value of lambda:")
 lam = dmid
-print lam
+print(lam)
 
 for k in range(N):
     t_p[k] = -h_p[k] / (2.0 * (mu[k] + lam))
 
-print "t_p:"
-print t_p
+print("t_p:")
+print(t_p)
 
-print "sum of t_p**2:"
-print np.sum(t_p**2)
+print("sum of t_p**2:")
+print(np.sum(t_p**2))
 
-print "objective function:"
-print obj_func_final(f_0, h_p, mu, t_p)
+print("objective function:")
+print(obj_func_final(f_0, h_p, mu, t_p))
 
 
 
@@ -301,7 +301,7 @@ for i in range(plot_npts):
 
 mask = np.where(x_arr**2 + y_arr**2 <= 1.0)
 
-print "Minimum in elliptical region is: ", np.min(z_arr[mask])
-print "Maximum in elliptical region is: ", np.max(z_arr[mask])
+print("Minimum in elliptical region is: ", np.min(z_arr[mask]))
+print("Maximum in elliptical region is: ", np.max(z_arr[mask]))
 
 #plt.show()
