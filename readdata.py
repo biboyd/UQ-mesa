@@ -1,10 +1,11 @@
 #!/usr/bin/python
 
 import os, shutil, re
-from nugridpy import mesa as ms
+import mesa_reader as mr
 import numpy as np
 import matplotlib.pyplot as plt
 import datetime
+from sys import argv
 
 def ReadInls(inlist,value):
         inl = open(inlist,'r')
@@ -25,32 +26,53 @@ failm = []
 failr = []
 failb = []
 
-paths = ['/data/mhoffman/NUQ/1M_grid_highres']
+path = argv[1] 
+outdir = argv[2]
 
-for i in paths:
-    os.chdir(i)
+os.chdir(path)
 
-    # Get the final masses from the folders
-    #masses = []
-    for file in os.listdir(i):
-    
+# Get the final masses from the folders
+#masses = []
+i=0
+for file in sorted(os.listdir(path)):
+    if file == "run_utils" or file == "multitask_.jugdata":
+        pass
+    else:
+        i+=1
+
         # Check if it's a directory, if it's a file, we'll ignore it
-        if os.path.isdir(i+'/'+file) == True:
+        if os.path.isdir(path+'/'+file):
                 
-            os.chdir(i+'/'+file)
+            os.chdir(path+'/'+file)
             currd = os.getcwd()
             print('Now in directory... '+os.getcwd())
-            os.system('rm ./LOGS/history.datasa')
+            #os.system('rm ./LOGS/history.datasa')
             
-            s = ms.history_data()
-            lum = s.get('log_L')
-            mass = s.get('star_mass')
+            try: 
+                 s = mr.MesaData('LOGS/history.data')
+            except FileNotFoundError:
+                 print("Can't fine LOGS/history.data . Will skip")
+                 continue
+            except:
+                 print("found file but something else messed up")
+                 continue
+      
+            lum = s.data('log_L')
+            mass = s.data('star_mass')
+            T = s.data('log_Teff')
+            plt.plot(T, lum)
+            xlo, xhi = plt.xlim()
+            plt.xlim(xhi, xlo)
+            plt.xlabel("log_Teff")
+            plt.ylabel("log_L")
+            plt.savefig(f"{outdir}/plots/plt{i}.png")
+            plt.close()
 
-            fl = lum[ len(lum)-1 ]
-            fm = mass[ len(mass)-1 ]
+            fl = lum[-1]
+            fm = mass[-1]
 
-            rv = ReadInls('inlist_1.0','Reimers_scaling')
-            bv = ReadInls('inlist_1.0','Blocker_scaling')
+            rv = ReadInls('inlist_to_wd','Reimers_scaling')
+            bv = ReadInls('inlist_to_wd','Blocker_scaling')
             
             if fl < 0. :
                 masses.append(fm)
@@ -59,25 +81,38 @@ for i in paths:
                 print('Final mass is: '+str(fm))
                 print('Reimers: '+str(rv))
                 print('Blocker: '+str(bv))
+                print('Lum: '+str(fl))
             else:
-                print('Luminosity too low here, failed point!')
+                print('Luminosity too low here, failed point!', fl)
                 failm.append(fm)
                 failb.append(bv)
                 failr.append(rv)
-                
-            os.chdir(i)
 
         else:
             print(file+' is not a folder, ignoring it!')
-         
-os.chdir('/data/mhoffman/NUQ/1M_grid_highres/')
         
-if not os.path.exists('data'):
-    os.mkdir('data')
-os.chdir('/data/mhoffman/NUQ/1M_grid_highres/data')
-np.savetxt('StarM.out',masses,delimiter=',')
-np.savetxt('Reims.out',reims,delimiter=',')
-np.savetxt('Block.out',block,delimiter=',')
-np.savetxt('FailM.out',failm,delimiter=',')
-np.savetxt('FailB.out',failb,delimiter=',')
-np.savetxt('FailR.out',failr,delimiter=',')
+
+import pdb;pdb.set_trace()
+np.savetxt(f"{outdir}/StarM.out",masses,delimiter=',')
+if masses == []:
+    np.save(f"{outdir}/StarM.npy", masses)
+
+np.savetxt(f"{outdir}/Reims.out",reims,delimiter=',')
+if reims == []:
+    np.save(f"{outdir}/Reims.npy", reims)
+
+np.savetxt(f"{outdir}/Block.out",block,delimiter=',')
+if block == []:
+    np.save(f"{outdir}/Block.npy", block)
+
+np.savetxt(f"{outdir}/FailM.out",failm,delimiter=',')
+if failm == []:
+    np.save(f"{outdir}/FailM.npy", failm)
+
+np.savetxt(f"{outdir}/FailB.out",failb,delimiter=',')
+if failb == []:
+    np.save(f"{outdir}/FailB.npy", failb)
+
+np.savetxt(f"{outdir}/FailR.out",failr,delimiter=',')
+if failr == []:
+    np.save(f"{outdir}/FailR.npy", failr)
