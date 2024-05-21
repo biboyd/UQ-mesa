@@ -91,28 +91,20 @@ for file in sorted(os.listdir(path)):
         else:
             print(file+' is not a folder, ignoring it!')
         
-
-import pdb;pdb.set_trace()
 np.savetxt(f"{outdir}/StarM.out",masses,delimiter=',')
-if masses == []:
-    np.save(f"{outdir}/StarM.npy", masses)
+np.save(f"{outdir}/StarM.npy", masses)
 
 np.savetxt(f"{outdir}/Reims.out",reims,delimiter=',')
-if reims == []:
-    np.save(f"{outdir}/Reims.npy", reims)
+np.save(f"{outdir}/Reims.npy", reims)
 
 np.savetxt(f"{outdir}/Block.out",block,delimiter=',')
-if block == []:
-    np.save(f"{outdir}/Block.npy", block)
+np.save(f"{outdir}/Block.npy", block)
 
 np.savetxt(f"{outdir}/FailM.out",failm,delimiter=',')
-if failm == []:
-    np.save(f"{outdir}/FailM.npy", failm)
+np.save(f"{outdir}/FailM.npy", failm)
 
 np.savetxt(f"{outdir}/FailB.out",failb,delimiter=',')
-if failb == []:
-    np.save(f"{outdir}/FailB.npy", failb)
+np.save(f"{outdir}/FailB.npy", failb)
 
 np.savetxt(f"{outdir}/FailR.out",failr,delimiter=',')
-if failr == []:
-    np.save(f"{outdir}/FailR.npy", failr)
+np.save(f"{outdir}/FailR.npy", failr)
