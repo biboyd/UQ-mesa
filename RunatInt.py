@@ -8,7 +8,6 @@ import numpy as np
 import random
 import os, shutil, re
 import math
-import argparse
 
 # These are the template files that will be copied and made into the series of directories
 
@@ -39,11 +38,9 @@ runlist = l[0::6]
 print('Now creating top directory... '+topdir)
 print('Number of points in paramters space... '+str(pts))
 
-# User defined inputs
-parser = argparse.ArgumentParser()
-parser.add_argument('-c', '--on_cluster', action='store_true')#, type=bool, default=False, help='Whether to run on cluster')
-parser.add_argument('-d', '--distribution', type=str, default='u', choices=['u', 'c'], help='using uniform[u] or cauchy[c] distribution?')
-args = parser.parse_args()
+# Ask user if running on a cluster or not?
+Q1 = raw_input("Are you running on a cluster [y/n] ? ")
+Q2 = raw_input("Will you be using uniform[u] or cauchy[c] distribution [u/c] ? ")
 
 random.seed()
 
@@ -96,10 +93,10 @@ for i in range(pts):
     # rx and bx are random numbers selected from these intervals OR they are 
     # a Cauchy distributed value from the above calculation
 
-    if args.distribution == 'u':
+    if Q2 == 'u':
         rx = str(np.random.uniform(0.3,0.9))
         bx = str(np.random.uniform(0.0,0.1))
-    elif args.distribution == 'c':
+    if Q2 == 'c':
         rx = str(x_ik[0,i])
         bx = str(x_ik[1,i])
 
@@ -115,8 +112,7 @@ for i in range(pts):
     templ = open('batch_cmd.sh','r')
     cluster = open('cluster.sh','r')
     runfile = open('run_script','a')
-    if args.on_cluster:
-        # running on cluster
+    if Q1 == 'y':
         for line in cluster:
             if './rn' in line:
                 runfile.write('mpirun -np 1 ./rn > run_out_'+str(i)+'.log &\n')
@@ -129,8 +125,7 @@ for i in range(pts):
                 runfile.write('wait')
             else:
                 runfile.write(line)
-    else:
-        # not running on cluster
+    if Q1 == 'n':
         for line in templ:
             if './rn' in line:
                 runfile.write('./rn > run_out_'+str(i)+'.log\n')
@@ -158,8 +153,13 @@ for i in os.listdir(fpath):
     newd = fpath+'/'+i
     n = re.sub('c','',i)
     nn = float(n)
-    if args.on_cluster:
-        # running on cluster
+    if Q1 == 'n':
+        os.chdir(newd)
+        os.system('at -f run_script -m -q a now &> at.out')
+        #print('Run this')
+        os.chdir(fpath)
+        f.write('Ran in folder '+newd+'\n')
+    if Q1 == 'y':                                
         if nn in runlist:
             os.chdir(newd)
             os.system('qsub run_script')
@@ -169,12 +169,5 @@ for i in os.listdir(fpath):
             #print('Don\'t run')
             os.chdir(fpath)
             f.write('Skipped folder '+newd+'\n')
-    else:
-        # not running on cluster
-        os.chdir(newd)
-        os.system('at -f run_script -m -q a now &> at.out')
-        #print('Run this')
-        os.chdir(fpath)
-        f.write('Ran in folder '+newd+'\n')
 f.close()    
 
