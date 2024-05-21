@@ -6,30 +6,41 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
-def obj_func_init(x, y):
-    yint = 0.559567248037217
-    fx = -1.1322751540276104
-    fy = 0.13778613804801929
-    fxx = 5.768756688622785
-    fyy = -0.20601276511812017
-    fxy = 0.4645735171653338/2.0
-    fyx = 0.4645735171653338/2.0
-    
-    # yint = 0.5596    
-    # fx = -1.1323     
-    # fy = 0.1378      
-    # fxx = 5.7688     
-    # fyy = -0.2060     
-    # fxy = 0.4646/2.0 
-    # fyx = 0.4646/2.0 
+def read_coeff():
+    with open("results.txt", 'r') as f:
+        in_multivariate = False
+        in_coeff = False
 
-    # yint = 0.5490
-    # fx = -0.6414
-    # fy = 0.1296
-    # fxx = 2.0293
-    # fyy = -0.1975
-    # fxy = 0.4279/2.0
-    # fyx = 0.4279/2.0           
+        # loop through file line by line
+        for line in f.readlines():
+            # check if to multivariate section
+            if "Multivariate Quadratic Regression" in line:
+                in_multivariate = True
+
+            elif in_multivariate:
+                # check if to coefficient section
+                if "Coefficients:" in line:
+                    in_coeff = True
+                elif in_coeff:
+                    # check if just labels or actual data
+                    if "Intercept" in line:
+                        pass
+                    else:
+                        coeff_list = line.split()
+
+                        # check we have right number of coeff.
+                        assert len(coeff_list) == 6
+
+                        # stop reading file
+                        break
+
+    # return coeff as floats.
+    return [float(c) for c in coeff_list]
+
+def obj_func_init(x, y):
+    yint, fx, fy, fxx, fyy, fxy = read_coeff()
+    fxy /= 2.
+    fyx = fxy
 
     obj = yint + fx * x + fy * y + \
                  fxx * x**2 + fyy * y**2 + \
@@ -67,7 +78,7 @@ y_arr = np.linspace(y[0], y[1], plot_npts)
 x_arr, y_arr = np.meshgrid(x_arr, y_arr)
 z_arr = obj_func_init(x_arr, y_arr)
 fig = plt.figure()
-ax = fig.gca(projection='3d')
+ax = fig.add_subplot(projection='3d')
 
 surf = ax.plot_surface(x_arr, y_arr, z_arr)
 
@@ -108,22 +119,9 @@ print('Eigenvectors of Z are: ')
 print(v)
 
 # Coefficients from quadratic fits
-
-# yint = 0.5490
-# fx = -0.6414
-# fy = 0.1296
-# fxx = 2.0293
-# fyy = -0.1975
-# fxy = 0.4279/2.0
-# fyx = 0.4279/2.0
-
-yint = 0.559567248037217
-fx = -1.1322751540276104
-fy = 0.13778613804801929
-fxx = 5.768756688622785
-fyy = -0.20601276511812017
-fxy = 0.4645735171653338/2.0
-fyx = 0.4645735171653338/2.0
+yint, fx, fy, fxx, fyy, fxy = read_coeff()
+fxy /= 2.
+fyx = fxy
 
 f_i = [fx, fy]
 f_ij = np.matrix( [[fxx, fxy], [fyx, fyy]] )
