@@ -4,7 +4,9 @@ Uncertainty Quantification (UQ) in Modules and Experiments for Stellar Astrophys
 The scripts, doc, and otherwise found in this repo are related to my UQ study of the stellar evolution code, MESA.
 Some of my analyzing scripts utilise the mesa module for python from NuGridPy (nugridpy.phys.uvic.ca) and should be noted in the comments of the code. If you're interested in this project, you'll also find D. Willcox's work handy [here](https://github.com/dwillcox/nuq)
 
-DEPENDENCY: need to install the NuGridPy python package from [here](https://github.com/NuGrid/NuGridPy)
+## DEPENDENCIES: 
+* need to install the NuGridPy python package from [here](https://github.com/NuGrid/NuGridPy)
+* Need to install R to run the regression. On ubuntu that is `apt install r-base-core` will do.
 
 ## RUNNING:
 
