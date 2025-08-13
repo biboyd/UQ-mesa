@@ -1046,12 +1046,49 @@ class EnsembleAnalysis(object):
         self.outputfile_conv = ofile_conv
         self.analyze(max_size_ensemble)
         self.write_results()
-        
-    def analyze(self, max_size_ensemble=500):
+
+    def analyze(self, max_size_ensemble=500, max_tries=10000):
         # Do sampling of the points
-        for i, samplepts in enumerate(itertools.combinations(self.grid.points, self.nensemble)):
-            if i == max_size_ensemble:
-                break
+        N_points = len(self.grid.points)
+        N_samples = factorial(N_points)/factorial(N_points-self.nensemble)/factorial(self.nensemble)
+
+        if N_samples > max_size_ensemble:
+            # limit size of samples. choose randomly
+            rng = np.random.default_rng(11432)
+            subset_samples = []
+            subset_ints = []
+
+            for _ in range(max_tries):
+                # randomly choose indices
+                rand_ints = np.sort(rng.choice(N_points, self.nensemble, replace=False))
+
+                # check if inidices are unique
+                unique_ints = True
+                for k_ints in subset_ints:
+                    if np.all(rand_ints == k_ints):
+                        unique_ints = False
+                        break
+
+                # add sample to list 
+                if unique_ints:
+                    subset_ints.append(rand_ints)
+                    samplepts = []
+                    for j in rand_ints:
+                        samplepts.append(self.grid.points[j])
+                    subset_samples.append(samplepts)
+
+                # check if we reach max number of samples
+                if len(subset_samples) == max_size_ensemble:
+                    break
+
+            # warn if couldn't find enough samples
+            else:
+                print(f"Couldn't find {max_size_ensemble} unique samples in {max_tries}. Proceeding with {len(subset_samples)} samples")
+
+        else:
+            subset_samples = itertools.combinations(self.grid.points, self.nensemble)
+
+        for i, samplepts in enumerate(subset_samples):
             print('running combination {} with {} points.'.format(i, len(samplepts)))
             g = Grid(samplepts)
             qa = QuadraticAnalysis(g, self.lo, self.hi)
