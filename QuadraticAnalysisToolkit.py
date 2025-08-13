@@ -390,11 +390,11 @@ class EllipticOptimize(object):
             print('solved inner max = {}'.format(self.inner_max))
             print('inner max at x = {}'.format(self.inner_xmax))
 
-        # This doesn't work
-        # inner_min, inner_max, isuccess2 = self.get_extrema_slsqp(self.amat_inner)
-        # if self.verbose:
-        #     print('SLSQP inner min = {}'.format(inner_min))
-        #     print('SLSQP inner max = {}'.format(inner_max))
+        # This does work now. Need to check constarint vs our tolerance
+        self.slsqp_inner_min, self.slsqp_inner_max, self.slsqp_inner_xmin, self.slsqp_inner_xmax, isuccess2 = self.get_extrema_slsqp(self.amat_inner)
+        if self.verbose:
+            print('SLSQP inner min = {}'.format(self.slsqp_inner_min))
+            print('SLSQP inner max = {}'.format(self.slsqp_inner_max))
 
         isuccess2 = True
 
@@ -425,11 +425,11 @@ class EllipticOptimize(object):
             print('solved outer max = {}'.format(self.outer_max))
             print('outer max at x = {}'.format(self.outer_xmax))                        
 
-        # This doesn't work
-        # outer_min, outer_max, osuccess2 = self.get_extrema_slsqp(self.amat_outer)
-        # if self.verbose:
-        #     print('SLSQP outer min = {}'.format(outer_min))
-        #     print('SLSQP outer max = {}'.format(outer_max))
+        # This does work now
+        self.slsqp_outer_min, self.slsqp_outer_max, self.slsqp_outer_xmin, self.slsqp_outer_xmax, osuccess2 = self.get_extrema_slsqp(self.amat_outer)
+        if self.verbose:
+            print('SLSQP outer min = {}'.format(self.slsqp_outer_min))
+            print('SLSQP outer max = {}'.format(self.slsqp_outer_max))
 
         osuccess2 = True
         
@@ -491,7 +491,24 @@ class EllipticOptimize(object):
         file_handle.write('{}\n'.format(self.mesh_outer_xmin))                
         file_handle.write('# LOCATION OF OUTER MAXIMUM:\n')
         file_handle.write('{}\n'.format(self.mesh_outer_xmax))                        
-        
+ 
+        # Write a log of the SLSQP Optimization
+        # Given a file_handle, write a log of the Elliptic Optimization
+        file_handle.write('\n# ELLIPTIC SLSQP OPTIMIZATION LOG\n')
+        file_handle.write('# INNER MINIMUM, INNER MAXIMUM:\n')
+        file_handle.write('{}, {}\n'.format(self.slsqp_inner_min, self.slsqp_inner_max))
+        file_handle.write('# LOCATION OF INNER MINIMUM:\n')
+        file_handle.write('{}\n'.format(self.slsqp_inner_xmin))        
+        file_handle.write('# LOCATION OF INNER MAXIMUM:\n')
+        file_handle.write('{}\n'.format(self.slsqp_inner_xmax))                
+        file_handle.write('# OUTER MINIMUM, OUTER MAXIMUM:\n')
+        file_handle.write('{}, {}\n'.format(self.slsqp_outer_min, self.slsqp_outer_max))        
+        file_handle.write('# LOCATION OF OUTER MINIMUM:\n')
+        file_handle.write('{}\n'.format(self.slsqp_outer_xmin))                
+        file_handle.write('# LOCATION OF OUTER MAXIMUM:\n')
+        file_handle.write('{}\n'.format(self.slsqp_outer_xmax))                        
+
+              
     def quad_transform_nd(self, fp0, hp, mu, tp):
         f = fp0
         for hi, mi, ti in zip(hp, mu, tp):
@@ -567,13 +584,20 @@ class EllipticOptimize(object):
         x = self.center + dx
         return x
 
-    def elliptic_constraint_fun(self, z, amat):
+    def elliptic_constraint_fun(self, z, amat, c=None):
         # Elliptic constraint function which should be
         # non-negative if the constraint is satisfied
+        if c is None:
+            c = self.center
         f = 1.0
         for i in range(self.dm):
-            f -= amat[i,i] * (z[i] - self.center[i])**2
+            f -= amat[i,i] * (z[i] - c[i])**2
         return f
+
+    def elliptic_constraint_jac(self, z, amat, c):
+        # Elliptic constraint function jacobian
+        ellipse_coeff = np.diag(amat)
+        return -2 * ellipse_coeff * (z - c)
 
     def get_inscribed_rectangle(self, amat):
         # Returns the arrays lo, hi specifying the low and high
@@ -628,16 +652,18 @@ class EllipticOptimize(object):
         res = minimize(lambda x: self.quadfit.quadratic_nd(x, *self.quadfit.coefficients),
                        self.center, method='SLSQP',
                        constraints={'type': 'ineq',
-                                    'fun' : self.elliptic_constraint_fun,
-                                    'args': [amat]},
+                                    'fun': self.elliptic_constraint_fun,
+                                    'jac': self.elliptic_constraint_jac,
+                                    'args': [amat, self.center]},
                        tol=ztol)
         
         # Check to make sure the minimum satisfies the elliptic constraint
-        if res.success and self.elliptic_constraint_fun(res.x, amat) >= 0.0:
+        if res.success and self.elliptic_constraint_fun(res.x, amat) >= -ztol:
             # Construct fmin
             fmin = self.quadfit.quadratic_nd(res.x, *self.quadfit.coefficients)
+            xmin = res.x
         else:
-            return None, None, False
+            return None, None, None, None, False
         
         # Get maximum of quadratic function
         res = minimize(lambda x: -self.quadfit.quadratic_nd(x, *self.quadfit.coefficients),
@@ -648,15 +674,16 @@ class EllipticOptimize(object):
                        tol=ztol)
 
         # Check to make sure the maximum satisfies the elliptic constraint
-        if res.success and self.elliptic_constraint_fun(res.x, amat) >= 0.0:
+        if res.success and self.elliptic_constraint_fun(res.x, amat) >= -ztol:
             # Construct fmax
             fmax = self.quadfit.quadratic_nd(res.x, *self.quadfit.coefficients)
+            xmax = res.x
         else:
-            return None, None, False
+            return None, None, None, None, False
         
-        return fmin, fmax, True
+        return fmin, fmax, xmin, xmax, True
     
-    def get_extrema(self, amat, ellipse_type=None):
+    def get_extrema(self, amat, ellipse_type):
         lambdas, v = np.linalg.eig(amat)
 
         # Construct f1 (f_i)
