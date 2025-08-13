@@ -794,7 +794,7 @@ class EllipticOptimize(object):
             plt.xlabel('Lagrange Multiplier')
             plt.ylabel('chi(x) on {} ellipse boundary'.format(ellipse_type))
             plt.ylim([-1, 10])
-            plt.savefig('chix_lagrange_multiplier_{}.eps'.format(ellipse_type))
+            plt.savefig('chix_lagrange_multiplier_{}.png'.format(ellipse_type))
             plt.clf()
             
         # lo and hi bounds of intervals to look for roots
@@ -903,7 +903,7 @@ class EllipticOptimize(object):
             plt.legend(loc='upper center')
             plt.xlabel('Lagrange Multiplier')
             plt.ylabel('f(x) on {} ellipse boundary'.format(ellipse_type))
-            plt.savefig('fx_lagrange_multiplier_{}.eps'.format(ellipse_type))
+            plt.savefig('fx_lagrange_multiplier_{}.png'.format(ellipse_type))
             plt.clf()
             
         if len(fextrema) < 2:
