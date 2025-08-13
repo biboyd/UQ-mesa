@@ -73,251 +73,252 @@ def obj_func_final(f0, hp, mu, tp):
 
     return obj
 
-N = 2
+def main():
+    N = 2
 
-x = [0.1, 0.5]
-y = [0.4, 0.9]
+    x = [0.1, 0.5]
+    y = [0.4, 0.9]
 
-dx = x[1] - x[0]
-dy = y[1] - y[0]
+    dx = x[1] - x[0]
+    dy = y[1] - y[0]
 
-xc = (x[0] + x[1]) / 2.0
-yc = (y[0] + y[1]) / 2.0
+    xc = (x[0] + x[1]) / 2.0
+    yc = (y[0] + y[1]) / 2.0
 
-# Plot the function over the range.
+    # Plot the function over the range.
 
-plot_npts = 1000
-x_arr1 = np.linspace(x[0], x[1], plot_npts)
-y_arr1 = np.linspace(y[0], y[1], plot_npts)
-x_arr, y_arr = np.meshgrid(x_arr1, y_arr1)
-z_arr = obj_func_init(x_arr, y_arr)
-fig = plt.figure()
-ax = fig.add_subplot(projection='3d')
+    plot_npts = 1000
+    x_arr1 = np.linspace(x[0], x[1], plot_npts)
+    y_arr1 = np.linspace(y[0], y[1], plot_npts)
+    x_arr, y_arr = np.meshgrid(x_arr1, y_arr1)
+    z_arr = obj_func_init(x_arr, y_arr)
 
-surf = ax.plot_surface(x_arr, y_arr, z_arr)
+    # plotly plot
+    plotly_fig = plot3d_plotly(x_arr1, y_arr1, z_arr)
+    plotly_fig.write_html("function.html")
+    plotly_fig.write_image("function_.png")
 
-ax.view_init(elev = 45, azim = 35)
-plt.savefig('function.png')
+    # Get a rough estimate of the bounds of the inner elliptical region through sampling.
+    mask = np.where(( (x_arr - xc) / (dx / 2.0) )**2 + ( (y_arr - yc) / (dy / 2.0) )**2 <= 1.0)
 
-# plotly plot
-plotly_fig = plot3d_plotly(x_arr1, y_arr1, z_arr)
-plotly_fig.write_html("function.html")
-plotly_fig.write_image("function_.png")
+    print("rough Minimum in inner elliptical region is: ", np.min(z_arr[mask]))
+    print("rough Maximum in inner elliptical region is: ", np.max(z_arr[mask]))
 
-# Get a rough estimate of the bounds of the inner elliptical region through sampling.
-mask = np.where(( (x_arr - xc) / (dx / 2.0) )**2 + ( (y_arr - yc) / (dy / 2.0) )**2 <= 1.0)
+    mask = np.where(( (x_arr - xc) / (dx / np.sqrt(2.0)) )**2 + ( (y_arr - yc) / (dy / np.sqrt(2.0)) )**2 <= 1.0)
 
-print("Minimum in inner elliptical region is: ", np.min(z_arr[mask]))
-print("Maximum in inner elliptical region is: ", np.max(z_arr[mask]))
+    print("rough Minimum in outer elliptical region is: ", np.min(z_arr[mask]))
+    print("rough Maximum in outer elliptical region is: ", np.max(z_arr[mask]))
 
-mask = np.where(( (x_arr - xc) / (dx / np.sqrt(2.0)) )**2 + ( (y_arr - yc) / (dy / np.sqrt(2.0)) )**2 <= 1.0)
 
-print("Minimum in outer elliptical region is: ", np.min(z_arr[mask]))
-print("Maximum in outer elliptical region is: ", np.max(z_arr[mask]))
+    #Inner
+    a_ik_inner = np.matrix ( [[1.0/(dx/2.)**2, 0.0], [0.0, 1.0/(dy/2.)**2]] )
 
-#Inner
-#a_ik = np.matrix ( [[1.0/(dx/2.)**2, 0.0], [0.0, 1.0/(dy/2.)**2]] )
+    #Outer
+    a_ik_outer = np.matrix ( [[1.0/(dx/ np.sqrt(2.0))**2, 0.0], [0.0, 1.0/(dy/ np.sqrt(2.0))**2]] )
 
-#Outer
-a_ik = np.matrix ( [[1.0/(dx/ np.sqrt(2.0))**2, 0.0], [0.0, 1.0/(dy/ np.sqrt(2.0))**2]] )
+    for ellip_type, a_ik in zip(['Inner', 'Outer'], [a_ik_inner, a_ik_outer]):
+        x_arr, y_arr = np.meshgrid(x_arr1, y_arr1)
+        z_arr = obj_func_init(x_arr, y_arr)
+        # Z is the inverse of a_ik
+        Z = np.linalg.inv(a_ik)
 
-# Z is the inverse of a_ik
-Z = np.linalg.inv(a_ik)
+        #print('The inverse matrix is: ')
+        #print(Z)
 
-print('The inverse matrix is: ')
-print(Z)
+        # Compute eigenvectors/values
 
-# Compute eigenvectors/values
+        w, v = np.linalg.eig(Z)
 
-w, v = np.linalg.eig(Z)
+        #print('Eigenvalues of Z are: ')
+        #print(w)
+        #print('Eigenvectors of Z are: ')
+        #print(v)
 
-print('Eigenvalues of Z are: ')
-print(w)
-print('Eigenvectors of Z are: ')
-print(v)
+        # Coefficients from quadratic fits
+        yint, fx, fy, fxx, fyy, fxy = read_coeff()
+        fxy /= 2.
+        fyx = fxy
 
-# Coefficients from quadratic fits
-yint, fx, fy, fxx, fyy, fxy = read_coeff()
-fxy /= 2.
-fyx = fxy
+        f_i = [fx, fy]
+        f_ij = np.matrix( [[fxx, fxy], [fyx, fyy]] )
+        x_i = [xc, yc]
 
-f_i = [fx, fy]
-f_ij = np.matrix( [[fxx, fxy], [fyx, fyy]] )
-x_i = [xc, yc]
+        # Construct f'_0
 
-# Construct f'_0
+        f_0 = yint
+        for i in range(N):
+            f_0 += f_i[i] * x_i[i]
+            for j in range(N):
+                f_0 += f_ij[i,j] * x_i[i] * x_i[j]
 
-f_0 = yint
-for i in range(N):
-    f_0 += f_i[i] * x_i[i]
-    for j in range(N):
-        f_0 += f_ij[i,j] * x_i[i] * x_i[j]
+        # Construct f'_i
 
-# Construct f'_i
+        for i in range(N):
+            for j in range(N):
+                f_i[i] += 2.0 * f_ij[i,j] * x_i[j]
 
-for i in range(N):
-    for j in range(N):
-        f_i[i] += 2.0 * f_ij[i,j] * x_i[j]
+        #print('f\'_0 is: ')
+        #print(f_0)
+        #print('f\'_i is: ')
+        #print(f_i)
+        #print('f_ij is: ')
+        #print(f_ij)
 
-print('f\'_0 is: ')
-print(f_0)
-print('f\'_i is: ')
-print(f_i)
-print('f_ij is: ')
-print(f_ij)
+        lambda_k = np.zeros(N)
 
-lambda_k = np.zeros(N)
+        for k in range(N):
+            lambda_k[k] = 1.0 / w[k]
 
-for k in range(N):
-    lambda_k[k] = 1.0 / w[k]
+        #print('lambda_k: ')
+        #print(lambda_k)
 
-print('lambda_k: ')
-print(lambda_k)
+        g_k = np.zeros(N)
 
-g_k = np.zeros(N)
-
-for k in range(N):
-    for i in range(N):
-        g_k[k] += f_i[i] * v[i,k]
-
-g_kl = np.zeros( (N, N) )
-
-for k in range(N):
-    for l in range(N):
-        for j in range(N):
+        for k in range(N):
             for i in range(N):
-                g_kl[k,l] += f_ij[i,j] * v[i,k] * v[j,l]
+                g_k[k] += f_i[i] * v[i,k]
 
-print('g_k is: ')
-print(g_k)
-print('g_kl is: ')
-print(g_kl)
+        g_kl = np.zeros( (N, N) )
 
-g_pk = np.zeros(N)
-for k in range(N): 
-    g_pk[k] = g_k[k] / np.sqrt(lambda_k[k])
+        for k in range(N):
+            for l in range(N):
+                for j in range(N):
+                    for i in range(N):
+                        g_kl[k,l] += f_ij[i,j] * v[i,k] * v[j,l]
 
-g_pkl = np.zeros( (N,N) )
-for k in range(N):
-    for l in range(N):
-        g_pkl[k,l] = g_kl[k,l] / (np.sqrt(lambda_k[k]) * np.sqrt(lambda_k[l]))
+        #print('g_k is: ')
+        #print(g_k)
+        #print('g_kl is: ')
+        #print(g_kl)
 
-print('g_pk is: ')
-print(g_pk)
-print('g_pkl is: ')
-print(g_pkl)
+        g_pk = np.zeros(N)
+        for k in range(N): 
+            g_pk[k] = g_k[k] / np.sqrt(lambda_k[k])
 
-mu, u = np.linalg.eig(g_pkl)
+        g_pkl = np.zeros( (N,N) )
+        for k in range(N):
+            for l in range(N):
+                g_pkl[k,l] = g_kl[k,l] / (np.sqrt(lambda_k[k]) * np.sqrt(lambda_k[l]))
 
-print('Eigenvalues of g\'_kl are: ')
-print(mu)
-print('Eigenvectors of g\'_kl are: ')
-print(u)
+        #print('g_pk is: ')
+        #print(g_pk)
+        #print('g_pkl is: ')
+        #print(g_pkl)
 
-h_p = np.zeros(N)
+        mu, u = np.linalg.eig(g_pkl)
 
-for p in range(N):
-    for k in range(N):
-        h_p[p] += u[k,p] * g_pk[k]
+        #print('Eigenvalues of g\'_kl are: ')
+        #print(mu)
+        #print('Eigenvectors of g\'_kl are: ')
+        #print(u)
 
-t_p = np.zeros(N)
+        h_p = np.zeros(N)
 
-for k in range(N):
-    t_p[k] = -h_p[k] / (2.0 * mu[k])
+        for p in range(N):
+            for k in range(N):
+                h_p[p] += u[k,p] * g_pk[k]
 
-print("t_p is:")
-print(t_p)
+        t_p = np.zeros(N)
 
-print("sum of t_p**2 is:")
-print(np.sum(t_p**2))
+        for k in range(N):
+            t_p[k] = -h_p[k] / (2.0 * mu[k])
 
-if (np.sum(t_p**2)) <= 1.0:
-    print('Extremum found in the interior of the domain.')
-else:
-    print('Extremum not found in the interior of the domain.')
+        #print("t_p is:")
+        #print(t_p)
 
-print("objective function:")
-print(obj_func_final(f_0, h_p, mu, t_p))
+        #print("sum of t_p**2 is:")
+        #print(np.sum(t_p**2))
 
-def Cond42(a,b,c):
-    result = 0.0
-    for i in range( len(a) ):
-        result += a[i]**2 / ( 4. * (b[i] + c)**2 )
-    result -= 1.
-    return result
-
-N_iter_max = 1000000
-
-N_iter = 1
-
-# Print Values of Cond42 at -100, 0, 100
-print("Cond42 at -100: ", Cond42(h_p, mu, -100.0))
-print("Cond42 at 0: ", Cond42(h_p, mu, 0.0))
-print("Cond42 at 100: ", Cond42(h_p, mu, 100.0))
-
-# Change this range to [-100, 0] (say) to get the other bound
-
-dlo = 0.0
-dhi = 100.0
-
-tol = 1.0e-8
-
-while (N_iter <= N_iter_max):
-        dmid = (dlo + dhi) / 2.0
-
-        func_lo = Cond42(h_p, mu, dlo)
-        func_mid = Cond42(h_p, mu, dmid)
-
-        if ((dhi - dlo) / 2.0 < tol):
-            break
-        if (func_lo * func_mid < 0.0):
-            dhi = dmid
+        if (np.sum(t_p**2)) <= 1.0:
+            print('Extremum found in the interior of the domain.')
         else:
-            dlo = dmid
+            print('Extremum not found in the interior of the domain.')
 
-        N_iter = N_iter + 1
+        #print("objective function:")
+        #print(obj_func_final(f_0, h_p, mu, t_p))
 
-        if (N_iter == N_iter_max):
-            print("Result not converged; stopping.")
-            exit()
+        def Cond42(a,b,c):
+            result = 0.0
+            for i in range( len(a) ):
+                result += a[i]**2 / ( 4. * (b[i] + c)**2 )
+            result -= 1.
+            return result
 
-print("Final value of lambda:")
-lam = dmid
-print(lam)
+        N_iter_max = 1000000
 
-for k in range(N):
-    t_p[k] = -h_p[k] / (2.0 * (mu[k] + lam))
+        N_iter = 1
 
-print("t_p:")
-print(t_p)
+        # Print Values of Cond42 at -100, 0, 100
+        #print("Cond42 at -100: ", Cond42(h_p, mu, -100.0))
+        #print("Cond42 at 0: ", Cond42(h_p, mu, 0.0))
+        #print("Cond42 at 100: ", Cond42(h_p, mu, 100.0))
 
-print("sum of t_p**2:")
-print(np.sum(t_p**2))
+        # Change this range to [-100, 0] (say) to get the other bound
 
-print("objective function:")
-print(obj_func_final(f_0, h_p, mu, t_p))
+        dlo = 0.0
+        dhi = 100.0
+
+        tol = 1.0e-8
+
+        while (N_iter <= N_iter_max):
+                dmid = (dlo + dhi) / 2.0
+
+                func_lo = Cond42(h_p, mu, dlo)
+                func_mid = Cond42(h_p, mu, dmid)
+
+                if ((dhi - dlo) / 2.0 < tol):
+                    break
+                if (func_lo * func_mid < 0.0):
+                    dhi = dmid
+                else:
+                    dlo = dmid
+
+                N_iter = N_iter + 1
+
+                if (N_iter == N_iter_max):
+                    print("Result not converged; stopping.")
+                    exit()
+
+        #print("Final value of lambda:")
+        lam = dmid
+        #print(lam)
+
+        for k in range(N):
+            t_p[k] = -h_p[k] / (2.0 * (mu[k] + lam))
+
+        #print("t_p:")
+        #print(t_p)
+
+        #print("sum of t_p**2:")
+        #print(np.sum(t_p**2))
+
+        #print("objective function:")
+        #print(obj_func_final(f_0, h_p, mu, t_p))
 
 
 
-# Get the bounds of the final objective function; this should be
-# identical to the bounds of the original objective function if
-# we did everything correctly.
+        # Get the bounds of the final objective function; this should be
+        # identical to the bounds of the original objective function if
+        # we did everything correctly.
 
-for i in range(plot_npts):
-    for j in range(plot_npts):
-        x_arr[i,j] = (x_arr[i,j] - xc) * lambda_k[0]
+        for i in range(plot_npts):
+            for j in range(plot_npts):
+                x_arr[i,j] = (x_arr[i,j] - xc) * lambda_k[0]
 
-for i in range(plot_npts):
-    for j in range(plot_npts):
-        y_arr[i,j] = (y_arr[i,j] - yc) * lambda_k[1]
+        for i in range(plot_npts):
+            for j in range(plot_npts):
+                y_arr[i,j] = (y_arr[i,j] - yc) * lambda_k[1]
 
-for i in range(plot_npts):
-    for j in range(plot_npts):
-        z_arr[i,j] = obj_func_final(f_0, h_p, mu, [x_arr[i,j], y_arr[i,j]])
+        for i in range(plot_npts):
+            for j in range(plot_npts):
+                z_arr[i,j] = obj_func_final(f_0, h_p, mu, [x_arr[i,j], y_arr[i,j]])
 
-mask = np.where(x_arr**2 + y_arr**2 <= 1.0)
+        mask = np.where(x_arr**2 + y_arr**2 <= 1.0)
 
-print("Minimum in elliptical region is: ", np.min(z_arr[mask]))
-print("Maximum in elliptical region is: ", np.max(z_arr[mask]))
+        print(f"Minimum in {ellip_type} elliptical region is: ", np.min(z_arr[mask]))
+        print(f"Maximum in {ellip_type} elliptical region is: ", np.max(z_arr[mask]))
 
-#plt.show()
+        #plt.show()
+
+if __name__ == "__main__":
+    main()
