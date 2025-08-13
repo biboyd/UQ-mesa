@@ -17,6 +17,8 @@ parser.add_argument('-nm', '--nmeshsample', type=int,
                     help='If supplied, regularly sample the domain [lo, hi] using a mesh of nmeshsample points in each dimension and report the minimum and maximum of the quadratic fit function over the mesh (useful for sanity-checking or comparison purposes).')
 parser.add_argument('-o','--output', type=str, default='quad.log',
                     help='Name of output file for writing the results (default quad.log).')
+parser.add_argument('-oc','--output_conv', type=str, default='quad_conv.log',
+                    help='Name of output file for writing the convergance results  of ensemble analysis (default quad_conv.log).')
 parser.add_argument('-v','--verbose', action='store_true',
                     help='If supplied, perform analysis with verbose status printing.')
 parser.add_argument('-nens', '--numensemble', type=int,
@@ -24,7 +26,7 @@ parser.add_argument('-nens', '--numensemble', type=int,
 parser.add_argument('-maxens', '--maxensemble', type=int, default=500,
                     help='(Optional) Applies if --numensemble is supplied, sets the maximum size of the ensemble. Defaults to 500.')
 args = parser.parse_args()
-        
+
 if __name__=='__main__':
     # First do sanity checking on inputs
     if len(args.lo) != len(args.hi):
@@ -32,7 +34,7 @@ if __name__=='__main__':
 
     # Set dimensionality
     ndim = len(args.lo)
-        
+
     # Open the csv file in a Grid object
     g = Grid()
     g.initFromCSV(args.csvfile,
@@ -47,7 +49,7 @@ if __name__=='__main__':
     npoints_required = ndim*(ndim-1)/2 + 2*ndim + 1
     if len(g.points) < npoints_required:
         sys.exit('ERROR: Cannot perform quadratic analysis in {} dimensions with fewer than {} points.'.format(ndim, npoints_required))
-    
+
     # Detect whether we should do an ensemble
     if (args.numensemble and
         args.numensemble >= npoints_required and
@@ -55,6 +57,7 @@ if __name__=='__main__':
         ea = EnsembleAnalysis(g, args.lo, args.hi, args.numensemble,
                               max_size_ensemble=args.maxensemble,
                               ofile=args.output,
+                              ofile_conv=args.output_conv,
                               verbose=args.verbose)
     # Otherwise do 1 quadratic analysis using all grid points 
     else:
