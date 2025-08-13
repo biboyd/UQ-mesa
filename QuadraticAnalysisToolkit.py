@@ -1019,7 +1019,7 @@ class QuadraticAnalysis(object):
         
 class EnsembleAnalysis(object):
     def __init__(self, grid, lo, hi, nensemble, max_size_ensemble=500,
-                 ofile=None, verbose=False):
+                 ofile=None, ofile_conv=None, verbose=False):
         self.grid = grid
         self.lo = lo
         self.hi = hi
@@ -1043,6 +1043,7 @@ class EnsembleAnalysis(object):
         self.nensemble = nensemble
         self.verbose = verbose
         self.outputfile = ofile
+        self.outputfile_conv = ofile_conv
         self.analyze(max_size_ensemble)
         self.write_results()
         
@@ -1079,6 +1080,32 @@ class EnsembleAnalysis(object):
                 self.outer_fmax_std.append(np.std(self.outer_fmaxlist[:i]))
 
     def write_results(self):
+        if self.outputfile_conv:
+            fout = open(self.outputfile_conv, 'w')
+            fout.write('# ENSEMBLE SAMPLING ELLIPTIC OPTIMIZATION CONVERGENCE LOG\n')
+            if self.success:
+                fout.write('# SUCCESS!\n')
+            else:
+                fout.write('# FAILURE!\n')
+            fout.write('# NUMBER OF POINTS PER SAMPLE = {}\n'.format(self.nensemble))
+            fout.write('number samples,'+
+                       'inner min ave,'+
+                       'inner min std,'+
+                       'inner max ave,'+
+                       'inner max std,'+
+                       'outer min ave,'+
+                       'outer min std,'+
+                       'outer max ave,'+
+                       'outer max std\n')                       
+            i = 1
+            for imina, imins, imaxa, imaxs, omina, omins, omaxa, omaxs in zip(self.inner_fmin_ave, self.inner_fmin_std,
+                                                                              self.inner_fmax_ave, self.inner_fmax_std,
+                                                                              self.outer_fmin_ave, self.outer_fmin_std,
+                                                                              self.outer_fmax_ave, self.outer_fmax_std):
+                fout.write('{},{},{},{},{},{},{},{},{}\n'.format(i, imina, imins, imaxa, imaxs, omina, omins, omaxa, omaxs))
+                i += 1
+            fout.close()
+
         if self.outputfile:
             fout = open(self.outputfile, 'w')
             fout.write('# ENSEMBLE SAMPLING ELLIPTIC OPTIMIZATION LOG\n')
@@ -1087,23 +1114,18 @@ class EnsembleAnalysis(object):
             else:
                 fout.write('# FAILURE!\n')
             fout.write('# NUMBER OF POINTS PER SAMPLE = {}\n'.format(self.nensemble))
-            fout.write('number samples, '+
-                       'inner min ave, '+
-                       'inner min std, '+
-                       'inner max ave, '+
-                       'inner max std, '+
-                       'outer min ave, '+
-                       'outer min std, '+
-                       'outer max ave, '+
-                       'outer max std\n')                       
-            i = 1
-            for imina, imins, imaxa, imaxs, omina, omins, omaxa, omaxs in zip(self.inner_fmin_ave, self.inner_fmin_std,
-                                                                              self.inner_fmax_ave, self.inner_fmax_std,
-                                                                              self.outer_fmin_ave, self.outer_fmin_std,
-                                                                              self.outer_fmax_ave, self.outer_fmax_std):
-                fout.write('{}, {}, {}, {}, {}, {}, {}, {}, {}\n'.format(i, imina, imins, imaxa, imaxs, omina, omins, omaxa, omaxs))
-                i += 1
+            fout.write('inner min,'+
+                       'inner max,'+
+                       'outer min,'+
+                       'outer max\n')
+
+            for imin, imax, omin, omax in zip(self.inner_fminlist,
+                                              self.inner_fmaxlist,
+                                              self.outer_fminlist,
+                                              self.outer_fmaxlist):
+                fout.write(f"{imin},{imax},{omin},{omax}\n")
             fout.close()
+
 
 class Histogram(object):
     def __init__(self, bin_values = [], bin_edges = [], normalize=False):
