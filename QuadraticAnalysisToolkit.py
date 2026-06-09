@@ -1056,7 +1056,7 @@ class EnsembleAnalysis(object):
 
         if N_samples > max_size_ensemble:
             # limit size of samples. choose randomly
-            rng = np.random.default_rng(11432)
+            rng = np.random.default_rng()
             subset_samples = []
             subset_ints = []
 
