@@ -29,7 +29,7 @@ failb = []
 path = argv[1] 
 outdir = argv[2]
 
-os.chdir(path)
+os.makedirs(f"{outdir}/plots", exist_ok=True)
 
 # Get the final masses from the folders
 #masses = []
@@ -41,23 +41,18 @@ for f in sorted(os.listdir(path)):
     # returns None if not a match
     valid_dir = re.fullmatch(pattern, f)
 
-    if f is not None:
+    if valid_dir is not None:
         i+=1
 
         # Check if it's a directory, if it's a f, we'll ignore it
         if os.path.isdir(path+'/'+f):
-                
-            os.chdir(path+'/'+f)
-            currd = os.getcwd()
-            print('Now in directory... '+os.getcwd())
-            
             try: 
-                 s = mr.MesaData('LOGS/history.data')
+                 s = mr.MesaData(f'{path}/{f}/LOGS/history.data')
             except FileNotFoundError:
-                 print("Can't fine LOGS/history.data . Will skip")
+                 print(f"Can't find {f}/LOGS/history.data . Will skip")
                  continue
             except:
-                 print("found LOGS/history.data file but something else messed up")
+                 print(f"found {f}/LOGS/history.data file but something else messed up")
                  continue
       
             lum = s.data('log_L')
@@ -74,8 +69,8 @@ for f in sorted(os.listdir(path)):
             fl = lum[-1]
             fm = mass[-1]
 
-            rv = ReadInls('inlist_to_wd','Reimers_scaling')
-            bv = ReadInls('inlist_to_wd','Blocker_scaling')
+            rv = ReadInls(f'{path}/{f}/inlist_to_wd','Reimers_scaling')
+            bv = ReadInls(f'{path}/{f}/inlist_to_wd','Blocker_scaling')
             
             if fl < 0. :
                 masses.append(fm)
@@ -86,7 +81,7 @@ for f in sorted(os.listdir(path)):
                 print('Blocker: '+str(bv))
                 print('Lum: '+str(fl))
             else:
-                print('Luminosity too low here, failed point!', fl)
+                print('Luminosity too high here, failed point!', fl)
                 failm.append(fm)
                 failb.append(bv)
                 failr.append(rv)
