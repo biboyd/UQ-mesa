@@ -997,6 +997,8 @@ class QuadraticAnalysis(object):
     def analyze(self, method='elliptical'):
         # Do the quadratic fit and either elliptical or rectangular optimization
         self.qfit = QuadraticFit(self.grid)
+        if self.verbose:
+            print(self.qfit)
         if method.lower().strip() == 'elliptical':
             self.eopt = EllipticOptimize(self.qfit, self.lo, self.hi,
                                          nmesh=self.nmesh,
