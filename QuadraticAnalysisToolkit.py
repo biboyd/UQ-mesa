@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit, minimize, brentq
 import random
 
+
 class Point(object):
     def __init__(self, r=[], v=None):
         # Position in n-D space
@@ -15,6 +16,7 @@ class Point(object):
         self.v = v
         # Dimensionality of point
         self.dm = len(r)
+
 
 class Grid(object):
     def __init__(self, points=None):
@@ -55,7 +57,7 @@ class Grid(object):
         raw_data = np.genfromtxt(fname, delimiter=delimiter, skip_header=skip_header)
         if len(raw_data)==0:
             sys.exit('ERROR: tried to open file with no data.')
-        
+
         # Each element of data is a row from the file file: create points
         self.points = []
         for row in raw_data:
@@ -65,7 +67,7 @@ class Grid(object):
         assert(self.dm == self.points[0].dm)
         self.getCoords()
         self.getValues()
-        
+
     def getCoords(self):
         self.coords = [[] for n in range(self.dm)]
         for p in self.points:
@@ -75,7 +77,8 @@ class Grid(object):
 
     def getValues(self):
         self.values = np.array([p.v for p in self.points])
-        
+
+
 class QuadraticFit(object):
     def __init__(self, grid):
         # Takes a grid of Point objects and fits them
@@ -137,7 +140,7 @@ class QuadraticFit(object):
         for ci, dci in zip(self.get_coefs_second(),
                            self.get_coefs_second(self.std_error)):
             file_handle.write('{} +/- {}\n'.format(ci, dci))
-        
+
     def init_cross_indices(self):
         # Set up a matrix of indices
         # into the coefs_cross vector
@@ -249,12 +252,13 @@ class QuadraticFit(object):
                                                        p0=np.ones(self.ncoefs))
         self.std_error = np.sqrt(np.diag(self.covariance))
 
+
 class RectangularOptimize(object):
     def __init__(self, quadfit, lo, hi, npts=20, fail_threshold=10, verbose=False):
         # Given a QuadraticFit object, optimize the quadratic function
         # over the rectangular region [lo, hi].
         # This is inspired by sample code from Doug Swesty.
-        
+
         self.quadfit = quadfit
         self.dm      = quadfit.dm
         self.lo      = np.array(lo)
@@ -294,7 +298,7 @@ class RectangularOptimize(object):
         xmin = minopt['x']
         success_min = minopt['success']
         assert(success_min)
-        
+
         # Get maximum of quadratic function
         maxopt = minimize(lambda x: -self.quadfit.quadratic_nd(x, *self.quadfit.coefficients),
                           guess, method=method, bounds=bounds, tol=ztol)
@@ -350,6 +354,7 @@ class RectangularOptimize(object):
             self.success = False
             print('Rectangular Optimization failed - you may try increasing fail_threshold')
         return min_function, min_location, max_function, max_location
+
 
 class EllipticOptimize(object):
     def __init__(self, quadfit, lo, hi, nmesh=False, verbose=False):
@@ -411,19 +416,19 @@ class EllipticOptimize(object):
             self.mesh_inner_xmin = None
             self.mesh_inner_xmax = None
             isuccess3 = True
-            
+
         isuccess = isuccess and isuccess2 and isuccess3
-            
+
         if self.verbose:
             print('\n------------ OUTER ELLIPSE OPTIMIZATION')
         self.outer_min, self.outer_max, self.outer_xmin, self.outer_xmax, osuccess = self.get_extrema(self.amat_outer, 'outer')
-        
+
         if self.verbose:
-            print('\n------------ OUTER ELLIPSE SUMMARY')            
+            print('\n------------ OUTER ELLIPSE SUMMARY')
             print('solved outer min = {}'.format(self.outer_min))
-            print('outer min at x = {}'.format(self.outer_xmin))            
+            print('outer min at x = {}'.format(self.outer_xmin))
             print('solved outer max = {}'.format(self.outer_max))
-            print('outer max at x = {}'.format(self.outer_xmax))                        
+            print('outer max at x = {}'.format(self.outer_xmax))
 
         # This does work now
         self.slsqp_outer_min, self.slsqp_outer_max, self.slsqp_outer_xmin, self.slsqp_outer_xmax, osuccess2 = self.get_extrema_slsqp(self.amat_outer)
@@ -432,23 +437,23 @@ class EllipticOptimize(object):
             print('SLSQP outer max = {}'.format(self.slsqp_outer_max))
 
         osuccess2 = True
-        
-        if self.domesh:            
+
+        if self.domesh:
             self.mesh_outer_min, self.mesh_outer_max, self.mesh_outer_xmin, self.mesh_outer_xmax, osuccess3 = self.get_extrema_mesh(self.amat_outer, self.nmeshpts)
             if self.verbose:
                 print('Mesh Sampling outer min = {}'.format(self.mesh_outer_min))
                 print('outer min at x = {}'.format(self.mesh_outer_xmin))
                 print('Mesh Sampling outer max = {}'.format(self.mesh_outer_max))
-                print('outer max at x = {}'.format(self.mesh_outer_xmax))            
+                print('outer max at x = {}'.format(self.mesh_outer_xmax))
         else:
             self.mesh_outer_min = None
             self.mesh_outer_max = None
             self.mesh_outer_xmin = None
             self.mesh_outer_xmax = None
             osuccess3 = True
-            
+
         osuccess = osuccess and osuccess2 and osuccess3
-            
+
         self.success = isuccess and osuccess
 
     def __str__(self):
@@ -491,7 +496,7 @@ class EllipticOptimize(object):
         file_handle.write('{}\n'.format(self.mesh_outer_xmin))                
         file_handle.write('# LOCATION OF OUTER MAXIMUM:\n')
         file_handle.write('{}\n'.format(self.mesh_outer_xmax))                        
- 
+
         # Write a log of the SLSQP Optimization
         # Given a file_handle, write a log of the Elliptic Optimization
         file_handle.write('\n# ELLIPTIC SLSQP OPTIMIZATION LOG\n')
@@ -508,7 +513,6 @@ class EllipticOptimize(object):
         file_handle.write('# LOCATION OF OUTER MAXIMUM:\n')
         file_handle.write('{}\n'.format(self.slsqp_outer_xmax))                        
 
-              
     def quad_transform_nd(self, fp0, hp, mu, tp):
         f = fp0
         for hi, mi, ti in zip(hp, mu, tp):
@@ -541,7 +545,7 @@ class EllipticOptimize(object):
         for hp, mup in zip(h,mu):
             f += -0.5*hp**2 / ((mup + x)**3)
         return f
-    
+
     def get_lambda_bounds(self, h, mu):
         # Return llo, lhi where chi < 0.
         # llo < all poles and lhi > all poles
@@ -629,7 +633,7 @@ class EllipticOptimize(object):
         fmax = np.amin(z_flat)
         xmin = np.zeros(self.dm)
         xmax = np.zeros(self.dm)
-        
+
         for i, zi in enumerate(z_flat):
             xvec = np.array([xf[i] for xf in x_flat])
             if self.elliptic_constraint_fun(xvec, amat) >= 0.0:
@@ -641,7 +645,7 @@ class EllipticOptimize(object):
                     xmax = xvec
 
         return fmin, fmax, xmin, xmax, True
-            
+
     def get_extrema_slsqp(self, amat):
         # Get extrema of fit function within the ellipse
         # defined by amat using scipy nonlinear
@@ -656,7 +660,7 @@ class EllipticOptimize(object):
                                     'jac': self.elliptic_constraint_jac,
                                     'args': [amat, self.center]},
                        tol=ztol)
-        
+
         # Check to make sure the minimum satisfies the elliptic constraint
         if res.success and self.elliptic_constraint_fun(res.x, amat) >= -ztol:
             # Construct fmin
@@ -664,7 +668,7 @@ class EllipticOptimize(object):
             xmin = res.x
         else:
             return None, None, None, None, False
-        
+
         # Get maximum of quadratic function
         res = minimize(lambda x: -self.quadfit.quadratic_nd(x, *self.quadfit.coefficients),
                        self.center, method='SLSQP',
@@ -680,9 +684,9 @@ class EllipticOptimize(object):
             xmax = res.x
         else:
             return None, None, None, None, False
-        
+
         return fmin, fmax, xmin, xmax, True
-    
+
     def get_extrema(self, amat, ellipse_type):
         lambdas, v = np.linalg.eig(amat)
 
@@ -774,10 +778,10 @@ class EllipticOptimize(object):
                 hp[p] += u[k,p] * gp1[k]
 
         # Prepare to find extrema of the objective function on the ellipse boundary
-        
+
         # Get the sorted poles of chi(lambda) where chi -> Infinity
         poles = np.sort(-mu)
-                
+
         # Get lo and hi bounds of the roots lambda
         llo, lhi = self.get_lambda_bounds(hp, mu)
 
@@ -796,14 +800,14 @@ class EllipticOptimize(object):
             plt.ylim([-1, 10])
             plt.savefig('chix_lagrange_multiplier_{}.png'.format(ellipse_type))
             plt.clf()
-            
+
         # lo and hi bounds of intervals to look for roots
         intlo = [llo, poles[-1]]
         inthi = [poles[0], lhi]
 
         # List of roots for lambda
         lroots = []
-        
+
         ztol = 1.0e-9 # Find roots to a tolerance of 1e-9
         # Find the minima of chi between each of the poles and check sign
         for i in range(len(poles)-1):
@@ -842,7 +846,7 @@ class EllipticOptimize(object):
 
         if self.verbose:
             print('Found roots of chi(x): {}'.format(lroots))
-                
+
         # Find the maximum and minimum of f(t) given the roots of chi
         fextrema = []
         tplist   = []
@@ -865,7 +869,7 @@ class EllipticOptimize(object):
 
             print("objective function:")
             print(self.quad_transform_nd(fp0, hp, mu, tp))
-        
+
         # Check tp found above to see if it is really within the ellipse
         if np.sum(tp**2) <= 1.0:
             ftpi = self.quad_transform_nd(fp0, hp, mu, tp)
@@ -873,7 +877,7 @@ class EllipticOptimize(object):
             tplist.append(tp)
             if self.verbose:
                 print('Value of f at internal extrema: {}'.format(ftpi))
-            
+
         for i, xr in enumerate(lroots):
             tpi = self.get_tp_from_lambda(xr, hp, mu)
             ftpi = self.quad_transform_nd(fp0, hp, mu, tpi)
@@ -898,14 +902,14 @@ class EllipticOptimize(object):
             imin, fmin = min(enumerate(fval_vec), key=operator.itemgetter(1))
             print('TESTING: found max(fval_vec) = {}'.format(fmax))
             print('TESTING: found min(fval_vec) = {}'.format(fmin))
-            
+
             plt.plot(xval_vec, fval_vec)
             plt.legend(loc='upper center')
             plt.xlabel('Lagrange Multiplier')
             plt.ylabel('f(x) on {} ellipse boundary'.format(ellipse_type))
             plt.savefig('fx_lagrange_multiplier_{}.png'.format(ellipse_type))
             plt.clf()
-            
+
         if len(fextrema) < 2:
             if self.verbose:
                 print('ERROR: insufficient function extrema found!')
@@ -925,14 +929,14 @@ class EllipticOptimize(object):
 
             min_on_boundary = False
             max_on_boundary = False
-            
+
             if imin != 0:
                 min_on_boundary = True
                 lambda_min = lroots[imin-1]
             if imax != 0:
                 max_on_boundary = True
                 lambda_max = lroots[imax-1]          
-            
+
             if self.verbose:
                 print("At Function Maximum :")
                 print("tp :")
@@ -958,13 +962,14 @@ class EllipticOptimize(object):
                 print(np.sum(tpmin**2))
 
                 print('x : {}'.format(xmax))
-                
+
                 print("function minimum :")
                 print(fmin)
 
                 print("function minimum on boundary?: {}".format(min_on_boundary))                
 
         return fmin, fmax, xmin, xmax, success
+
 
 class QuadraticAnalysis(object):    
     def __init__(self, grid, lo, hi, method='elliptical',
@@ -993,7 +998,7 @@ class QuadraticAnalysis(object):
         # Do the analysis
         self.success = self.analyze(self.method)
         self.write_results()
-        
+
     def analyze(self, method='elliptical'):
         # Do the quadratic fit and either elliptical or rectangular optimization
         self.qfit = QuadraticFit(self.grid)
@@ -1018,7 +1023,8 @@ class QuadraticAnalysis(object):
             self.qfit.writelog(fout)
             self.eopt.writelog(fout)
             fout.close()
-        
+
+
 class EnsembleAnalysis(object):
     def __init__(self, grid, lo, hi, nensemble, max_size_ensemble=500,
                  ofile=None, ofile_conv=None, verbose=False):
@@ -1031,17 +1037,17 @@ class EnsembleAnalysis(object):
         self.inner_fmaxlist = []
         self.outer_fminlist = []
         self.outer_fmaxlist = []
-        
+
         self.inner_fmin_ave = []
         self.inner_fmin_std = [0]
         self.inner_fmax_ave = []
         self.inner_fmax_std = [0]
-        
+
         self.outer_fmin_ave = []
         self.outer_fmin_std = [0]
         self.outer_fmax_ave = []
         self.outer_fmax_std = [0]
-        
+
         self.nensemble = nensemble
         self.verbose = verbose
         self.outputfile = ofile
@@ -1189,5 +1195,3 @@ class Histogram(object):
     def get_center(self):
         bc = np.sum(self.bin_values * self.bin_centers)/np.sum(self.bin_values)
         return bc
-            
-        
