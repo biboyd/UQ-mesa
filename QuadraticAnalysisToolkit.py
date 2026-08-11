@@ -1177,10 +1177,12 @@ class QuadraticAnalysis(object):
 
 class EnsembleAnalysis(object):
     def __init__(self, grid, lo, hi, nensemble, max_size_ensemble=500,
-                 ofile=None, ofile_conv=None, verbose=False):
+                 method='elliptical', ofile=None, ofile_conv=None,
+                 verbose=False):
         self.grid = grid
         self.lo = lo
         self.hi = hi
+        self.method = method 
         self.success = True
 
         self.inner_fminlist = []
@@ -1249,14 +1251,20 @@ class EnsembleAnalysis(object):
         for i, samplepts in enumerate(subset_samples):
             print('running combination {} with {} points.'.format(i, len(samplepts)))
             g = Grid(samplepts)
-            qa = QuadraticAnalysis(g, self.lo, self.hi)
-            self.success = self.success and qa.eopt.success
+            qa = QuadraticAnalysis(g, self.lo, self.hi, method=self.method)
+            self.success = self.success and qa.opt.success
             if not self.success:
                 sys.exit('ERROR: ensemble analyis failed at combination {}!'.format(i))
-            self.inner_fminlist.append(qa.eopt.inner_min)
-            self.inner_fmaxlist.append(qa.eopt.inner_max)
-            self.outer_fminlist.append(qa.eopt.outer_min)
-            self.outer_fmaxlist.append(qa.eopt.outer_max)
+            if self.method == 'elliptical':
+                self.inner_fminlist.append(qa.opt.inner_min)
+                self.inner_fmaxlist.append(qa.opt.inner_max)
+                self.outer_fminlist.append(qa.opt.outer_min)
+                self.outer_fmaxlist.append(qa.opt.outer_max)
+            elif self.method == 'rectangular':
+                self.inner_fminlist.append(qa.opt.min_function)
+                self.inner_fmaxlist.append(qa.opt.max_function)
+                self.outer_fminlist.append(qa.opt.slsqp_min_function)
+                self.outer_fmaxlist.append(qa.opt.slsqp_max_function)
 
         # Do progressive averaging to evaluate convergence
         self.inner_fmin_ave.append(self.inner_fminlist[0])
