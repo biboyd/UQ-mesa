@@ -85,7 +85,7 @@ class QuadraticFit(object):
         # using an N-dimensional quadratic function.
         self.grid   = grid
         self.dm     = grid.dm
-        self.ncoefs = 1+2*self.dm+floor(factorial(self.dm)/2)
+        self.ncoefs = int(1 + 2*self.dm + (self.dm*(self.dm-1))/2)
         self.coefficients  = np.zeros(self.ncoefs)
         self.covariance    = []
         self.std_error     = []
@@ -201,7 +201,7 @@ class QuadraticFit(object):
         # cross-variable products: e.g. cij*xi*xj
         if len(coefficients)==0:                        
             coefficients = self.coefficients
-        ncross = int(floor(factorial(self.dm)/2))
+        ncross = int(floor((self.dm * (self.dm - 1))/2))
         return coefficients[self.dm+1:self.dm+1+ncross]
 
     def get_error_cross(self):
@@ -213,7 +213,7 @@ class QuadraticFit(object):
         # second-order variables: e.g. ci*xi**2
         if len(coefficients)==0:                        
             coefficients = self.coefficients
-        ncross = int(floor(factorial(self.dm)/2))
+        ncross = int(floor((self.dm * (self.dm - 1))/2))
         return coefficients[self.dm+1+ncross:]
 
     def get_error_second(self):
