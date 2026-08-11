@@ -87,6 +87,9 @@ class QuadraticFit(object):
         self.dm     = grid.dm
         self.ncoefs = int(1 + 2*self.dm + (self.dm*(self.dm-1))/2)
         self.coefficients  = np.zeros(self.ncoefs)
+        self.Q = np.zeros((self.dm, self.dm))
+        self.C = np.zeros(self.dm)
+        self.constant = 0.
         self.covariance    = []
         self.std_error     = []
         self.cross_indices = []
@@ -251,6 +254,21 @@ class QuadraticFit(object):
                                                        self.grid.values,
                                                        p0=np.ones(self.ncoefs))
         self.std_error = np.sqrt(np.diag(self.covariance))
+
+        self.fill_arrays()
+
+    def fill_arrays(self):
+        # fill Q
+        for idx, c in enumerate(self.get_coefs_second()):
+            self.Q[idx, idx] = 2. * c
+        for idx, c in enumerate(self.get_coefs_cross()):
+            i, j = self.get_cross_indices(idx)
+            self.Q[i, j] = c
+            self.Q[j, i] = c
+        # fill C
+        self.C = np.copy(self.get_coefs_first())
+        # fill constant
+        self.constant = self.get_coefs_const()
 
 
 class RectangularOptimize(object):
@@ -986,12 +1004,10 @@ class QuadraticAnalysis(object):
         self.method = method
         self.success = False
 
-        # Ellipse optimization
-        self.eopt = None
+        # optimization
+        self.opt = None
         self.nmesh = nmesh
 
-        # Scipy optimization on rectangular domain
-        self.ropt = None 
         self.npts = npts
         self.fail_threshold = fail_threshold
 
@@ -1005,15 +1021,15 @@ class QuadraticAnalysis(object):
         if self.verbose:
             print(self.qfit)
         if method.lower().strip() == 'elliptical':
-            self.eopt = EllipticOptimize(self.qfit, self.lo, self.hi,
+            self.opt = EllipticOptimize(self.qfit, self.lo, self.hi,
                                          nmesh=self.nmesh,
                                          verbose=self.verbose)
-            return self.eopt.success
+            return self.opt.success
         elif method.lower().strip() == 'rectangular':
-            self.ropt = RectangularOptimize(self.qfit, self.lo, self.hi,
+            self.opt = RectangularOptimize(self.qfit, self.lo, self.hi,
                                             npts=self.npts, fail_threshold=self.fail_threshold,
                                             verbose=self.verbose)
-            return self.ropt.success
+            return self.opt.success
         else:
             sys.exit('Received unknown analysis method: {}'.format(method))
 
@@ -1021,7 +1037,12 @@ class QuadraticAnalysis(object):
         if self.outputfile:
             fout = open(self.outputfile, 'w')
             self.qfit.writelog(fout)
-            self.eopt.writelog(fout)
+            if self.method.lower().strip() == 'elliptical':
+                self.opt.writelog(fout)
+
+            elif self.method.lower().strip() == 'rectangular':
+                self.opt.writelog(fout)
+
             fout.close()
 
 
