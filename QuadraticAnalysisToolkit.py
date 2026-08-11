@@ -4,7 +4,7 @@ import itertools
 import numpy as np
 from math import factorial, floor
 import matplotlib.pyplot as plt
-from scipy.optimize import curve_fit, minimize, brentq
+from scipy.optimize import curve_fit, minimize, brentq, Bounds
 import random
 
 
@@ -284,47 +284,157 @@ class RectangularOptimize(object):
         self.dr      = self.hi - self.lo
         self.center  = 0.5 * (self.hi + self.lo)
         self.verbose = verbose
-        self.min_function, self.min_location, self.max_function, self.max_location = self.analyze(npts=npts,
-                                                                                                  fail_threshold=fail_threshold)
+        #self.min_function, self.min_location, self.max_function, self.max_location = self.analyze(npts=npts,
+        #                                                                                          fail_threshold=fail_threshold)
+
+        self.min_function, self.min_location, self.max_function, self.max_location = self.get_extrema()
+        self.slsqp_min_function, self.slsqp_min_location, self.slsqp_max_function, self.slsqp_max_location = self.get_extrema_slsqp()
+
+        # There are asserts in get_extrema which check for success
+        self.success = True
 
     def __str__(self):
         pretty = 'Rectangular Bounds: [{}, {}]\n'.format(self.min_function, self.max_function)
         return pretty
 
-    def do_optimize(self, start_guess=[]):
-        # Optimize the quadratic function using scipy.optimize
-        # and the 'L-BFGS-B' method
-        method = 'L-BFGS-B'
-        ztol = 1.0e-9
+    def get_f_jac_hess(self):
+        """
+        Build f, grad, hess for f(x) = 0.5 x^T Q x + c^T x + const.
+        Q is symmetrized automatically, since only the symmetric part
+        of Q contributes to the quadratic form.
 
+        Q may be a dense array-like or any scipy.sparse matrix. Sparsity
+        is preserved throughout -- grad/hess never densify Q, so this
+        scales to large, sparse problems (trust-constr accepts a sparse
+        Hessian directly and uses a sparse-aware trust-region solver).
+        """
+
+        def f(x):
+            # Q @ x works identically for dense ndarray and sparse csr_matrix;
+            # ravel/asarray guards against sparse matmul returning shape (n,1).
+            Qx = np.asarray(self.quadfit.Q @ x).ravel()
+            return 0.5 * x @ Qx + self.quadfit.C @ x + self.quadfit.constant
+
+        def grad(x):
+            return np.asarray(self.quadfit.Q @ x).ravel() + self.quadfit.C
+
+        def hess(x):
+            # Hessian is constant for a quadratic, but trust-constr calls
+            # hess(x) expecting a callable, so we just ignore x and return Q.
+            # Returning the sparse Q here (instead of densifying) is what lets
+            # trust-constr use its sparse-aware trust-region solver.
+            return self.quadfit.Q
+
+        return f, grad, hess
+
+    def optimize_quadratic(self, maximize=False, guess=None):
+        """
+        Minimize (or maximize) f(x) = 0.5 x^T Q x + c^T x + const
+        subject to lb <= x <= ub, using the exact gradient and Hessian.
+
+        Returns the scipy OptimizeResult (res.fun is corrected back to the
+        original sign if maximize=True).
+        """
+
+        ztol = 1e-9
+
+        f, grad, hess = self.get_f_jac_hess()
+
+        # set sign based on min/max
+        sign = -1.0 if maximize else 1.0
+
+        obj      = lambda x: sign * f(x)
+        obj_grad = lambda x: sign * grad(x)
+        obj_hess = lambda x: sign * hess(x)
+
+        bounds = Bounds(self.lo, self.hi)
+        if guess is None:
+            guess = np.array([random.uniform(xlo, xhi) for xlo, xhi in zip(self.lo, self.hi)])
+
+        res = minimize(
+            obj, guess,
+            jac=obj_grad,
+            hess=obj_hess,
+            bounds=bounds,
+            method='trust-constr',
+            tol=ztol
+        )
+
+        # report in original (un-negated) units
+        res.fun = sign * res.fun
+        return res
+
+    def get_extrema(self, start_guess=None):
         # Use the array passed as the starting guess
         # for the optimization. If no array is passed
         # then generate a random sample in the rectangular domain.
-        if list(start_guess):
-            guess = np.array(start_guess)
-        else:
-            guess = np.array([random.uniform(xlo, xhi) for xlo, xhi in zip(self.lo, self.hi)])
-
-        # Rectangular domain bounds for optimization
-        bounds = [[xlo, xhi] for xlo, xhi in zip(self.lo, self.hi)]
 
         # Get minimum of quadratic function
-        minopt = minimize(lambda x: self.quadfit.quadratic_nd(x, *self.quadfit.coefficients),
-                          guess, method=method, bounds=bounds, tol=ztol)
+        minopt = self.optimize_quadratic(maximize=False, guess=start_guess)
 
         fmin = minopt['fun']
         xmin = minopt['x']
         success_min = minopt['success']
-        assert(success_min)
+        assert success_min
 
         # Get maximum of quadratic function
-        maxopt = minimize(lambda x: -self.quadfit.quadratic_nd(x, *self.quadfit.coefficients),
-                          guess, method=method, bounds=bounds, tol=ztol)
-
-        fmax = -maxopt['fun']
+        maxopt = self.optimize_quadratic(maximize=True, guess=start_guess)
+        fmax = maxopt['fun']
         xmax = maxopt['x']
         success_max = maxopt['success']
-        assert(success_max)
+        assert success_max
+
+        return fmin, xmin, fmax, xmax
+
+    def optimize_quadratic_slsqp(self, maximize=False, guess=None):
+        # Get extrema of fit function within the rectangle
+        # defined by amat using scipy nonlinear
+        # optimization with constraints
+        ztol = 1.0e-9
+
+        f, grad, hess = self.get_f_jac_hess()
+
+        # set sign based on min/max
+        sign = -1.0 if maximize else 1.0
+
+        obj      = lambda x: sign * f(x)
+        obj_grad = lambda x: sign * grad(x)
+
+        bounds = Bounds(self.lo, self.hi)
+        if guess is None:
+            guess = np.array([random.uniform(xlo, xhi) for xlo, xhi in zip(self.lo, self.hi)])
+
+        res = minimize(
+            obj, guess,
+            jac=obj_grad,
+            bounds=bounds,
+            method='SLSQP',
+            tol=ztol
+        )
+
+        # report in original (un-negated) units
+        res.fun = sign * res.fun
+        return res
+
+    def get_extrema_slsqp(self, start_guess=None):
+        # Use the array passed as the starting guess
+        # for the optimization. If no array is passed
+        # then generate a random sample in the rectangular domain.
+
+        # Get minimum of quadratic function
+        minopt = self.optimize_quadratic_slsqp(maximize=False, guess=start_guess)
+
+        fmin = minopt['fun']
+        xmin = minopt['x']
+        success_min = minopt['success']
+        assert success_min
+
+        # Get maximum of quadratic function
+        maxopt = self.optimize_quadratic_slsqp(maximize=True, guess=start_guess)
+        fmax = maxopt['fun']
+        xmax = maxopt['x']
+        success_max = maxopt['success']
+        assert success_max
 
         return fmin, xmin, fmax, xmax
 
@@ -333,7 +443,6 @@ class RectangularOptimize(object):
         # values for optimization. This avoids the optimization
         # "getting stuck" especially at edges (thanks to Doug).
         #
-        # npts is the number of initial points to sample for do_optimize().
 
         min_function = None
         min_location = None
@@ -343,9 +452,9 @@ class RectangularOptimize(object):
         nfailed = 0
         nsuccess = 0
 
-        while(nsuccess < npts and nfailed < fail_threshold):
+        while (nsuccess < npts and nfailed < fail_threshold):
             try:
-                fmin, xmin, fmax, xmax = self.do_optimize()
+                fmin, xmin, fmax, xmax = self.get_extrema()
             except AssertionError:
                 nfailed += 1
                 pass
@@ -372,6 +481,26 @@ class RectangularOptimize(object):
             self.success = False
             print('Rectangular Optimization failed - you may try increasing fail_threshold')
         return min_function, min_location, max_function, max_location
+
+    def writelog(self, file_handle):
+        # Given a file_handle, write a log of the Rectangular Optimization
+        file_handle.write('\n# RECTANGULAR Trust Reg OPTIMIZATION LOG\n')
+        file_handle.write('# MINIMUM, MAXIMUM:\n')
+        file_handle.write('{}, {}\n'.format(self.min_function, self.max_function))
+        file_handle.write('# LOCATION OF MINIMUM:\n')
+        file_handle.write('{}\n'.format(self.min_location))
+        file_handle.write('# LOCATION OF MAXIMUM:\n')
+        file_handle.write('{}\n'.format(self.max_location))
+
+        file_handle.write('\n# RECTANGULAR SLSQP OPTIMIZATION LOG\n')
+        file_handle.write('# MINIMUM, MAXIMUM:\n')
+        file_handle.write('{}, {}\n'.format(self.slsqp_min_function, self.slsqp_max_function))
+        file_handle.write('# LOCATION OF MINIMUM:\n')
+        file_handle.write('{}\n'.format(self.slsqp_min_location))
+        file_handle.write('# LOCATION OF MAXIMUM:\n')
+        file_handle.write('{}\n'.format(self.slsqp_max_location))
+
+
 
 
 class EllipticOptimize(object):
