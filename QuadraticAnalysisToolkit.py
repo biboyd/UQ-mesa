@@ -457,7 +457,6 @@ class RectangularOptimize(object):
             RuntimeError("Solution not found w/ QPALM")
 
         # report in original (un-negated) units
-        sol = -1. * sol if maximize else sol
         return sol
 
     def get_extrema_QPALM(self, start_guess=None):
