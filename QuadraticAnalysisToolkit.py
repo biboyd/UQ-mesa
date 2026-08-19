@@ -8,6 +8,7 @@ from scipy.optimize import curve_fit, minimize, brentq, Bounds
 from scipy.sparse import csc_array 
 import random
 from qpsolvers import solve_qp
+import time
 
 
 class Point(object):
@@ -354,6 +355,7 @@ class RectangularOptimize(object):
         if guess is None:
             guess = np.array([random.uniform(xlo, xhi) for xlo, xhi in zip(self.lo, self.hi)])
 
+        start = time.time()
         res = minimize(
             obj, guess,
             jac=obj_grad,
@@ -362,6 +364,8 @@ class RectangularOptimize(object):
             method='trust-constr',
             tol=ztol
         )
+        end = time.time() - start
+        print(f"SCIPY trust-constr: {end}")
 
         # report in original (un-negated) units
         res.fun = sign * res.fun
@@ -407,6 +411,7 @@ class RectangularOptimize(object):
         if guess is None:
             guess = np.array([random.uniform(xlo, xhi) for xlo, xhi in zip(self.lo, self.hi)])
 
+        start = time.time()
         res = minimize(
             obj, guess,
             jac=obj_grad,
@@ -414,6 +419,8 @@ class RectangularOptimize(object):
             method='SLSQP',
             tol=ztol
         )
+        end = time.time() - start
+        print(f"SCIPY SLSQP: {end}")
 
         # report in original (un-negated) units
         res.fun = sign * res.fun
@@ -456,7 +463,10 @@ class RectangularOptimize(object):
         # set as sparse array to avoid warning from qpalm method
         P = csc_array(P)
 
+        start = time.time()
         sol = solve_qp(P, q, lb=self.lo, ub=self.hi, initvals=guess, solver='qpalm')
+        end = time.time() - start
+        print(f"qpsolvers QPALM: {end}")
 
         if sol is None:
             RuntimeError("Solution not found w/ QPALM")
