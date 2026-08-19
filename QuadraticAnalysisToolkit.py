@@ -5,6 +5,7 @@ import numpy as np
 from math import factorial, floor
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit, minimize, brentq, Bounds
+from scipy.sparse import csc_array 
 import random
 from qpsolvers import solve_qp
 
@@ -445,11 +446,15 @@ class RectangularOptimize(object):
         # using qpsolvers. using qpalm method as should
         # handle non-convex situations
 
+        if guess is None:
+            guess = np.array([random.uniform(xlo, xhi) for xlo, xhi in zip(self.lo, self.hi)])
+
+        # account for min/max 
         P = -1 * self.quadfit.Q if maximize else self.quadfit.Q
         q = -1. * self.quadfit.C if maximize else self.quadfit.C
 
-        if guess is None:
-            guess = np.array([random.uniform(xlo, xhi) for xlo, xhi in zip(self.lo, self.hi)])
+        # set as sparse array to avoid warning from qpalm method
+        P = csc_array(P)
 
         sol = solve_qp(P, q, lb=self.lo, ub=self.hi, initvals=guess, solver='qpalm')
 
