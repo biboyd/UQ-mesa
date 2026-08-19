@@ -8,6 +8,7 @@ from scipy.optimize import curve_fit, minimize, brentq, Bounds
 from scipy.sparse import csc_array 
 import random
 from qpsolvers import solve_qp
+import time
 
 
 class Point(object):
@@ -289,12 +290,27 @@ class RectangularOptimize(object):
         #self.min_function, self.min_location, self.max_function, self.max_location = self.analyze(npts=npts,
         #                                                                                          fail_threshold=fail_threshold)
 
+        start_trust = time.time()
         self.min_function, self.min_location, self.max_function, self.max_location = self.get_extrema()
+        end_trust = time.time() - start_trust
+
+        start_slsqp = time.time()
         self.slsqp_min_function, self.slsqp_min_location, self.slsqp_max_function, self.slsqp_max_location = self.get_extrema_slsqp()
+        end_slsqp = time.time() - start_slsqp
+
+        start_qpalm= time.time()
         self.QPALM_min_function, self.QPALM_min_location, self.QPALM_max_function, self.QPALM_max_location = self.get_extrema_QPALM()
+        end_qpalm = time.time() - start_qpalm
 
         # There are asserts in get_extrema which check for success
         self.success = True
+
+        print("Timing for Rectangular Optimization")
+        print("___________________________________")
+        print(f"SciPy trust-constr: {end_trust:e}")
+        print(f"SciPy SLSQP:        {end_slsqp:e}")
+        print(f"qsolvers qpalm:     {end_qpalm:e}")
+        print()
 
     def __str__(self):
         pretty = 'Rectangular Bounds: [{}, {}]\n'.format(self.min_function, self.max_function)
@@ -583,7 +599,9 @@ class EllipticOptimize(object):
 
         if self.verbose:
             print('\n------------ INNER ELLIPSE OPTIMIZATION')
+        start_inner = time.time()
         self.inner_min, self.inner_max, self.inner_xmin, self.inner_xmax, isuccess = self.get_extrema(self.amat_inner, 'inner')
+        end_inner = time.time() - start_inner
 
         if self.verbose:
             print('\n------------ INNER ELLIPSE SUMMARY')
@@ -593,7 +611,10 @@ class EllipticOptimize(object):
             print('inner max at x = {}'.format(self.inner_xmax))
 
         # This does work now. Need to check constarint vs our tolerance
+        start_slsqp_inner = time.time()
         self.slsqp_inner_min, self.slsqp_inner_max, self.slsqp_inner_xmin, self.slsqp_inner_xmax, isuccess2 = self.get_extrema_slsqp(self.amat_inner)
+        end_slsqp_inner = time.time() - start_slsqp_inner
+
         if self.verbose:
             print('SLSQP inner min = {}'.format(self.slsqp_inner_min))
             print('SLSQP inner max = {}'.format(self.slsqp_inner_max))
@@ -618,7 +639,9 @@ class EllipticOptimize(object):
 
         if self.verbose:
             print('\n------------ OUTER ELLIPSE OPTIMIZATION')
+        start_outer = time.time()
         self.outer_min, self.outer_max, self.outer_xmin, self.outer_xmax, osuccess = self.get_extrema(self.amat_outer, 'outer')
+        end_outer = time.time() - start_outer
 
         if self.verbose:
             print('\n------------ OUTER ELLIPSE SUMMARY')
@@ -628,7 +651,9 @@ class EllipticOptimize(object):
             print('outer max at x = {}'.format(self.outer_xmax))
 
         # This does work now
+        start_slsqp_outer = time.time()
         self.slsqp_outer_min, self.slsqp_outer_max, self.slsqp_outer_xmin, self.slsqp_outer_xmax, osuccess2 = self.get_extrema_slsqp(self.amat_outer)
+        end_slsqp_outer = time.time() - start_slsqp_outer
         if self.verbose:
             print('SLSQP outer min = {}'.format(self.slsqp_outer_min))
             print('SLSQP outer max = {}'.format(self.slsqp_outer_max))
@@ -652,6 +677,15 @@ class EllipticOptimize(object):
         osuccess = osuccess and osuccess2 and osuccess3
 
         self.success = isuccess and osuccess
+
+        # print out timing
+        print("Timing for Elliptic Optimization")
+        print("___________________________________")
+        print(f"K2008 Inner Ellip:       {end_inner:e}")
+        print(f"K2008 Outer Ellip:       {end_outer:e}")
+        print(f"SciPy SLSQP Inner Ellip: {end_slsqp_inner:e}")
+        print(f"SciPy SLSQP Outer Ellip: {end_slsqp_outer:e}")
+        print()
 
     def __str__(self):
         pretty = ""
