@@ -365,7 +365,7 @@ class RectangularOptimize(object):
             tol=ztol
         )
         end = time.time() - start
-        print(f"SCIPY trust-constr: {end}")
+        print(f"SCIPY trust-constr: {end:e}")
 
         # report in original (un-negated) units
         res.fun = sign * res.fun
@@ -420,7 +420,7 @@ class RectangularOptimize(object):
             tol=ztol
         )
         end = time.time() - start
-        print(f"SCIPY SLSQP: {end}")
+        print(f"SCIPY SLSQP: {end:e}")
 
         # report in original (un-negated) units
         res.fun = sign * res.fun
@@ -466,7 +466,7 @@ class RectangularOptimize(object):
         start = time.time()
         sol = solve_qp(P, q, lb=self.lo, ub=self.hi, initvals=guess, solver='qpalm')
         end = time.time() - start
-        print(f"qpsolvers QPALM: {end}")
+        print(f"qpsolvers QPALM: {end:e}")
 
         if sol is None:
             RuntimeError("Solution not found w/ QPALM")
