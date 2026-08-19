@@ -6,6 +6,7 @@ from math import factorial, floor
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit, minimize, brentq, Bounds
 import random
+from qpsolvers import solve_qp
 
 
 class Point(object):
@@ -289,6 +290,7 @@ class RectangularOptimize(object):
 
         self.min_function, self.min_location, self.max_function, self.max_location = self.get_extrema()
         self.slsqp_min_function, self.slsqp_min_location, self.slsqp_max_function, self.slsqp_max_location = self.get_extrema_slsqp()
+        self.QPALM_min_function, self.QPALM_min_location, self.QPALM_max_function, self.QPALM_max_location = self.get_extrema_QPALM()
 
         # There are asserts in get_extrema which check for success
         self.success = True
@@ -438,6 +440,41 @@ class RectangularOptimize(object):
 
         return fmin, xmin, fmax, xmax
 
+    def optimize_quadratic_QPALM(self, maximize=False, guess=None):
+        # Get extrema of fit function within the rectangle
+        # using qpsolvers. using qpalm method as should
+        # handle non-convex situations
+
+        P = -1 * self.quadfit.Q if maximize else self.quadfit.Q
+        q = -1. * self.quadfit.C if maximize else self.quadfit.C
+
+        if guess is None:
+            guess = np.array([random.uniform(xlo, xhi) for xlo, xhi in zip(self.lo, self.hi)])
+
+        sol = solve_qp(P, q, lb=self.lo, ub=self.hi, initvals=guess, solver='qpalm')
+
+        if sol is None:
+            RuntimeError("Solution not found w/ QPALM")
+
+        # report in original (un-negated) units
+        sol = -1. * sol if maximize else sol
+        return sol
+
+    def get_extrema_QPALM(self, start_guess=None):
+        # Use the array passed as the starting guess
+        # for the optimization. If no array is passed
+        # then generate a random sample in the rectangular domain.
+
+        # Get minimum of quadratic function
+        xmin = self.optimize_quadratic_QPALM(maximize=False, guess=start_guess)
+        fmin = self.quadfit.quadratic_nd(xmin)
+
+        # Get maximum of quadratic function
+        xmax = self.optimize_quadratic_QPALM(maximize=True, guess=start_guess)
+        fmax = self.quadfit.quadratic_nd(xmax)
+
+        return fmin, xmin, fmax, xmax
+
     def analyze(self, npts=20, fail_threshold=10):
         # Sample the rectangle multiple times to get starting
         # values for optimization. This avoids the optimization
@@ -499,6 +536,15 @@ class RectangularOptimize(object):
         file_handle.write('{}\n'.format(self.slsqp_min_location))
         file_handle.write('# LOCATION OF MAXIMUM:\n')
         file_handle.write('{}\n'.format(self.slsqp_max_location))
+
+        file_handle.write('\n# RECTANGULAR QPALM OPTIMIZATION LOG\n')
+        file_handle.write('# MINIMUM, MAXIMUM:\n')
+        file_handle.write('{}, {}\n'.format(self.QPALM_min_function, self.QPALM_max_function))
+        file_handle.write('# LOCATION OF MINIMUM:\n')
+        file_handle.write('{}\n'.format(self.QPALM_min_location))
+        file_handle.write('# LOCATION OF MAXIMUM:\n')
+        file_handle.write('{}\n'.format(self.QPALM_max_location))
+
 
 
 
